@@ -1,0 +1,338 @@
+2026-01-29 15:55:47,579 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-01-29 15:55:47,579 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-01-29 15:55:47,579 INFO RabbitMQ enabled: 10.100.0.22 queue=preprocess
+2026-01-29 15:55:47,579 INFO Application started
+2026-01-29 15:55:47,579 INFO Connected to Docker daemon
+2026-01-29 15:55:47,582 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 1.0s)
+2026-01-29 15:55:48,585 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 2.0s)
+2026-01-29 15:55:50,587 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 4.0s)
+2026-01-29 15:55:54,593 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 8.0s)
+2026-01-29 15:56:02,596 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 16.0s)
+2026-01-29 15:56:18,599 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 30.0s)
+2026-01-29 15:56:48,602 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 30.0s)
+2026-01-29 15:57:18,606 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 30.0s)
+2026-01-29 15:57:48,609 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 30.0s)
+2026-01-29 15:58:12,372 INFO Shutting down...
+2026-01-29 15:58:12,391 INFO Stats: docker(recv=96 match=0 filter=96) mq(recv=0 ok=0 fail=0)
+2026-01-29 15:58:24,604 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-01-29 15:58:24,604 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-01-29 15:58:24,605 INFO RabbitMQ enabled: 10.100.0.22 queue=preprocess
+2026-01-29 15:58:24,605 INFO Application started
+2026-01-29 15:58:24,605 INFO Connected to Docker daemon
+2026-01-29 15:58:24,609 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 1.0s)
+2026-01-29 15:58:25,612 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 2.0s)
+2026-01-29 15:58:27,615 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 4.0s)
+2026-01-29 15:58:31,618 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 8.0s)
+2026-01-29 15:58:39,624 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 16.0s)
+2026-01-29 15:58:55,631 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 30.0s)
+2026-01-29 15:59:25,636 ERROR RabbitMQ error: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5672, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5672) (retry in 30.0s)
+2026-01-29 15:59:43,791 INFO Shutting down...
+2026-01-29 15:59:43,809 INFO Stats: docker(recv=52 match=0 filter=52) mq(recv=0 ok=0 fail=0)
+2026-01-29 15:59:56,594 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-01-29 15:59:56,594 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-01-29 15:59:56,594 INFO RabbitMQ enabled: 10.100.0.22 queue=preprocess
+2026-01-29 15:59:56,594 INFO Application started
+2026-01-29 15:59:56,594 INFO Connected to Docker daemon
+2026-01-29 15:59:56,598 INFO Connected to RabbitMQ: 10.100.0.22
+2026-01-29 15:59:56,603 INFO Consuming queue: preprocess
+2026-01-29 16:07:09,781 INFO Shutting down...
+2026-01-29 16:07:09,800 INFO Stats: docker(recv=288 match=0 filter=288) mq(recv=0 ok=0 fail=0)
+2026-01-29 16:09:57,076 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-01-29 16:09:57,077 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-01-29 16:09:57,077 INFO RabbitMQ enabled: 10.100.0.22 queue=A0001
+2026-01-29 16:09:57,077 INFO Application started
+2026-01-29 16:09:57,077 INFO Connected to Docker daemon
+2026-01-29 16:09:57,081 INFO Connected to RabbitMQ: 10.100.0.22
+2026-01-29 16:09:57,082 INFO Consuming queue: A0001
+2026-01-29 16:09:57,083 INFO Message received: type=A0001 situationId=SI2601275dykg0 brigadePhaseId=BR260127shp4k0
+2026-01-29 16:09:57,083 WARNING File not found: /deploy/data/aetem/app/2026/01/27/BR260127shp4k0.pdf, skipping
+2026-01-29 16:14:49,668 INFO Shutting down...
+2026-01-29 16:14:49,687 INFO Stats: docker(recv=195 match=0 filter=195) mq(recv=1 ok=0 fail=0)
+2026-01-29 16:16:09,305 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-01-29 16:16:09,305 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-01-29 16:16:09,305 INFO RabbitMQ enabled: 10.100.0.22 queue=A0001
+2026-01-29 16:16:09,305 INFO Application started
+2026-01-29 16:16:09,305 INFO Connected to Docker daemon
+2026-01-29 16:16:09,310 INFO Connected to RabbitMQ: 10.100.0.22
+2026-01-29 16:16:09,314 INFO Consuming queue: A0001
+2026-01-29 16:16:55,979 INFO Message received: type=A0001 situationId=SI2601275dykg0 brigadePhaseId=BR260127shp4k0
+2026-01-29 16:16:55,997 INFO File exists: /deploy/data/aetem/app/2026/01/27/BR260127shp4k0.pdf
+2026-01-29 16:16:55,997 INFO Waiting 5.0 seconds before webhook...
+2026-01-29 16:17:01,265 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-01-29 16:27:27,884 INFO Message received: type=A0001 situationId=SI260129iiusr0 brigadePhaseId=BR260129pkr2i0
+2026-01-29 16:27:27,909 INFO File exists: /deploy/data/aetem/app/2026/01/29/BR260129pkr2i0.pdf
+2026-01-29 16:27:27,910 INFO Waiting 5.0 seconds before webhook...
+2026-01-29 16:27:32,968 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-01-29 16:27:45,352 INFO Message received: type=A0001 situationId=SI260129jj1m20 brigadePhaseId=BR260129qfll70
+2026-01-29 16:27:45,365 INFO File exists: /deploy/data/aetem/app/2026/01/29/BR260129qfll70.pdf
+2026-01-29 16:27:45,366 INFO Waiting 5.0 seconds before webhook...
+2026-01-29 16:27:50,434 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-01-29 16:28:18,460 INFO Message received: type=A0001 situationId=SI260129ywilj0 brigadePhaseId=BR260129hrreg0
+2026-01-29 16:28:18,469 INFO File exists: /deploy/data/aetem/app/2026/01/29/BR260129hrreg0.pdf
+2026-01-29 16:28:18,469 INFO Waiting 5.0 seconds before webhook...
+2026-01-29 16:28:23,531 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-01-29 16:32:07,922 INFO Message received: type=A0001 situationId=SI260129zx4zd0 brigadePhaseId=BR260129j9ch90
+2026-01-29 16:32:07,931 INFO File exists: /deploy/data/aetem/app/2026/01/29/BR260129j9ch90.pdf
+2026-01-29 16:32:07,931 INFO Waiting 5.0 seconds before webhook...
+2026-01-29 16:32:42,949 WARNING Webhook failed: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 1/3)
+2026-01-29 16:33:13,959 WARNING Webhook failed: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 2/3)
+2026-01-29 16:33:45,970 WARNING Webhook failed: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 3/3)
+2026-01-29 16:33:45,970 ERROR Webhook failed after 3 attempts: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-01-29 16:35:57,094 INFO Shutting down...
+2026-01-29 16:35:57,096 INFO Stats: docker(recv=797 match=0 filter=797) mq(recv=5 ok=4 fail=1)
+2026-01-29 16:36:07,137 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-01-29 16:36:07,137 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-01-29 16:36:07,138 INFO RabbitMQ enabled: 10.100.0.22 queue=A0001
+2026-01-29 16:36:07,138 INFO Application started
+2026-01-29 16:36:07,138 INFO Connected to Docker daemon
+2026-01-29 16:36:07,141 INFO Connected to RabbitMQ: 10.100.0.22
+2026-01-29 16:36:07,143 INFO Consuming queue: A0001
+2026-01-29 16:58:23,846 INFO Docker Event: action=create image=nginx:alpine name=terrain-server-pyeongchang id=34d8ad9beb29
+2026-01-29 16:58:31,836 INFO Docker Event: action=start image=nginx:alpine name=terrain-server-pyeongchang id=34d8ad9beb29
+2026-01-29 17:05:44,230 INFO Message received: type=A0001 situationId=SI260129cholg0 brigadePhaseId=BR260129dqynw0
+2026-01-29 17:05:44,260 INFO File exists: /deploy/data/aetem/app/2026/01/29/BR260129dqynw0.pdf
+2026-01-29 17:05:44,261 INFO Waiting 5.0 seconds before webhook...
+2026-01-29 17:05:49,340 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-01-29 17:10:08,319 INFO Shutting down...
+2026-01-29 17:10:08,322 INFO Stats: docker(recv=1379 match=2 filter=1377) mq(recv=1 ok=1 fail=0)
+2026-01-29 17:10:18,502 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-01-29 17:10:18,502 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-01-29 17:10:18,502 INFO RabbitMQ enabled: 10.100.0.22 queue=A0001
+2026-01-29 17:10:18,502 INFO Application started
+2026-01-29 17:10:18,503 INFO Connected to Docker daemon
+2026-01-29 17:10:18,507 INFO Connected to RabbitMQ: 10.100.0.22
+2026-01-29 17:10:18,509 INFO Consuming queue: A0001
+2026-01-29 17:11:17,893 INFO Message received: type=A0001 situationId=SI260129v9ikd0 brigadePhaseId=BR260129pkijp0
+2026-01-29 17:11:17,913 INFO File exists: /deploy/data/aetem/app/2026/01/29/BR260129pkijp0.pdf
+2026-01-29 17:11:17,913 INFO Waiting 5.0 seconds before webhook...
+2026-01-29 17:11:22,981 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-01-29 17:11:43,510 INFO Message received: type=A0001 situationId=SI260129gwsnv0 brigadePhaseId=BR260129zyfue0
+2026-01-29 17:11:43,519 INFO File exists: /deploy/data/aetem/app/2026/01/29/BR260129zyfue0.pdf
+2026-01-29 17:11:43,519 INFO Waiting 5.0 seconds before webhook...
+2026-01-29 17:11:48,557 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-01-30 09:29:58,018 INFO Message received: type=A0001 situationId=SI260130emzzu0 brigadePhaseId=BR260130psewx0
+2026-01-30 09:29:58,047 INFO File exists: /deploy/data/aetem/app/2026/01/30/BR260130psewx0.pdf
+2026-01-30 09:29:58,047 INFO Waiting 5.0 seconds before webhook...
+2026-01-30 09:30:03,104 INFO Webhook success: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-02-02 10:06:15,792 INFO Message received: type=A0001 situationId=SI260202l526s0 brigadePhaseId=BR260202yhtyh0
+2026-02-02 10:06:15,822 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR260202yhtyh0.pdf
+2026-02-02 10:06:15,822 INFO Waiting 5.0 seconds before webhook...
+2026-02-02 10:06:20,884 INFO Webhook success: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-02-02 10:06:37,512 INFO Message received: type=A0001 situationId=SI260202iclji0 brigadePhaseId=BR260202zawqk0
+2026-02-02 10:06:37,516 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR260202zawqk0.pdf
+2026-02-02 10:06:37,516 INFO Waiting 5.0 seconds before webhook...
+2026-02-02 10:06:42,564 INFO Webhook success: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-02-02 10:25:10,386 INFO Message received: type=A0001 situationId=SI2602026z9vg0 brigadePhaseId=BR260202ctgvp0
+2026-02-02 10:25:10,410 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR260202ctgvp0.pdf
+2026-02-02 10:25:10,411 INFO Waiting 5.0 seconds before webhook...
+2026-02-02 10:25:15,459 INFO Webhook success: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-02-02 12:38:39,761 INFO Message received: type=A0001 situationId=SI260202pg7jh0 brigadePhaseId=BR2602028hobe0
+2026-02-02 12:38:39,761 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR2602028hobe0.pdf
+2026-02-02 12:38:39,761 INFO Waiting 5.0 seconds before webhook...
+2026-02-02 12:38:44,792 INFO Webhook success: url=http://10.100.0.22:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-02-03 15:12:02,367 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-03 15:12:02,367 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-03 15:12:02,367 INFO RabbitMQ enabled: 10.100.0.22 queue=A0001
+2026-02-03 15:12:02,367 INFO Application started
+2026-02-03 15:12:02,367 INFO Connected to Docker daemon
+2026-02-03 15:12:02,397 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 1.0s)
+2026-02-03 15:12:03,427 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 2.0s)
+2026-02-03 15:12:05,457 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 4.0s)
+2026-02-03 15:12:09,478 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 8.0s)
+2026-02-03 15:12:17,505 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 16.0s)
+2026-02-03 15:12:33,513 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 30.0s)
+2026-02-03 15:13:03,528 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 30.0s)
+2026-02-03 15:13:33,550 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 30.0s)
+2026-02-03 15:14:03,586 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 30.0s)
+2026-02-03 15:14:33,597 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 30.0s)
+2026-02-03 15:15:03,612 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 30.0s)
+2026-02-03 15:15:33,642 ERROR RabbitMQ error: [Errno 111] Connect call failed ('10.100.0.22', 5672) (retry in 30.0s)
+2026-02-03 15:15:46,993 INFO Shutting down...
+2026-02-03 15:15:47,005 INFO Stats: docker(recv=129 match=0 filter=129) mq(recv=0 ok=0 fail=0)
+2026-02-03 15:15:52,566 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-03 15:15:52,566 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-03 15:15:52,566 INFO RabbitMQ enabled: 10.0.100.130 queue=A0001
+2026-02-03 15:15:52,566 INFO Application started
+2026-02-03 15:15:52,566 INFO Connected to Docker daemon
+2026-02-03 15:15:52,570 INFO Connected to RabbitMQ: 10.0.100.130
+2026-02-03 15:15:52,571 INFO Consuming queue: A0001
+2026-02-03 15:15:52,572 INFO Message received: type=A0001 situationId=SI2602028ac8v0 brigadePhaseId=BR260202tzxd00
+2026-02-03 15:15:52,586 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR260202tzxd00.pdf
+2026-02-03 15:15:52,586 INFO Waiting 5.0 seconds before webhook...
+2026-02-03 15:16:27,606 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 1/3)
+2026-02-03 15:16:58,615 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 2/3)
+2026-02-03 15:17:30,620 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 3/3)
+2026-02-03 15:17:30,621 ERROR Webhook failed after 3 attempts: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-03 15:17:30,622 INFO Message received: type=A0001 situationId=SI260202cesqs0 brigadePhaseId=BR260202fu8kp0
+2026-02-03 15:17:30,633 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR260202fu8kp0.pdf
+2026-02-03 15:17:30,633 INFO Waiting 5.0 seconds before webhook...
+2026-02-03 15:18:05,640 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 1/3)
+2026-02-03 15:18:36,646 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 2/3)
+2026-02-03 15:19:08,652 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 3/3)
+2026-02-03 15:19:08,652 ERROR Webhook failed after 3 attempts: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-03 15:19:08,653 INFO Message received: type=A0001 situationId=SI260202fifpb0 brigadePhaseId=BR260202ltgow0
+2026-02-03 15:19:08,665 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR260202ltgow0.pdf
+2026-02-03 15:19:08,665 INFO Waiting 5.0 seconds before webhook...
+2026-02-03 15:19:43,673 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 1/3)
+2026-02-03 15:20:14,678 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 2/3)
+2026-02-03 15:20:46,686 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 3/3)
+2026-02-03 15:20:46,687 ERROR Webhook failed after 3 attempts: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-03 15:20:46,687 INFO Message received: type=A0001 situationId=SI260202bp5pj0 brigadePhaseId=BR2602024lrha0
+2026-02-03 15:20:46,703 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR2602024lrha0.pdf
+2026-02-03 15:20:46,703 INFO Waiting 5.0 seconds before webhook...
+2026-02-03 15:21:21,708 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 1/3)
+2026-02-03 15:21:52,711 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 2/3)
+2026-02-03 15:22:24,714 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 3/3)
+2026-02-03 15:22:24,714 ERROR Webhook failed after 3 attempts: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-03 15:22:24,715 INFO Message received: type=A0001 situationId=SI260202kizjk0 brigadePhaseId=BR260202dhy2j0
+2026-02-03 15:22:24,724 INFO File exists: /deploy/data/aetem/app/2026/02/02/BR260202dhy2j0.pdf
+2026-02-03 15:22:24,724 INFO Waiting 5.0 seconds before webhook...
+2026-02-03 15:22:59,737 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 1/3)
+2026-02-03 15:23:30,747 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 2/3)
+2026-02-03 15:24:02,757 WARNING Webhook failed: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 3/3)
+2026-02-03 15:24:02,757 ERROR Webhook failed after 3 attempts: url=http://10.0.210.15:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-03 16:30:42,070 INFO Message received: type=A0001 situationId=SI260203p1fn80 brigadePhaseId=BR260203sasfo0
+2026-02-03 16:30:42,085 INFO File exists: /deploy/data/aetem/app/2026/02/03/BR260203sasfo0.pdf
+2026-02-03 16:30:42,085 INFO Waiting 5.0 seconds before webhook...
+2026-02-03 16:30:47,120 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-02-04 15:04:47,970 INFO Message received: type=A0001 situationId=SI2602042ckkl0 brigadePhaseId=BR2602041ounm0
+2026-02-04 15:04:47,984 INFO File exists: /deploy/data/aetem/app/2026/02/04/BR2602041ounm0.pdf
+2026-02-04 15:04:47,984 INFO Waiting 5.0 seconds before webhook...
+2026-02-04 15:04:53,041 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-02-04 17:26:18,780 INFO Docker Event: action=create image=nginx:alpine name=terrain-server-gumi id=1818dba59fd5
+2026-02-04 17:26:21,998 INFO Docker Event: action=create image=nginx:alpine name=terrain-server-gumi-gen id=5a960405d900
+2026-02-04 17:28:01,435 INFO Docker Event: action=destroy image=nginx:alpine name=terrain-server-gumi id=1818dba59fd5
+2026-02-04 17:28:07,527 INFO Docker Event: action=destroy image=nginx:alpine name=terrain-server-gumi-gen id=5a960405d900
+2026-02-04 17:28:23,886 INFO Docker Event: action=create image=nginx:alpine name=terrain-server-gumi id=77e63b1fb31f
+2026-02-04 17:28:24,026 INFO Docker Event: action=start image=nginx:alpine name=terrain-server-gumi id=77e63b1fb31f
+2026-02-04 17:28:29,230 INFO Docker Event: action=create image=nginx:alpine name=terrain-server-gumi-gen id=577ee16cc734
+2026-02-04 17:28:29,388 INFO Docker Event: action=start image=nginx:alpine name=terrain-server-gumi-gen id=577ee16cc734
+2026-02-04 17:28:33,558 INFO Docker Event: action=create image=nginx:alpine name=terrain-server-pyeongchang id=2fc94bb3504f
+2026-02-04 17:28:33,747 INFO Docker Event: action=start image=nginx:alpine name=terrain-server-pyeongchang id=2fc94bb3504f
+2026-02-06 14:30:26,466 INFO Shutting down...
+2026-02-06 14:30:26,468 INFO Stats: docker(recv=167853 match=10 filter=167843) mq(recv=7 ok=2 fail=5)
+2026-02-06 14:30:30,977 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-06 14:30:30,978 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-06 14:30:30,978 INFO RabbitMQ enabled: 10.0.100.130 queue=A0001
+2026-02-06 14:30:30,978 INFO Application started
+2026-02-06 14:30:30,978 INFO Connected to Docker daemon
+2026-02-06 14:30:30,981 INFO Connected to RabbitMQ: 10.0.100.130
+2026-02-06 14:30:30,982 INFO Consuming queue: A0001
+2026-02-06 15:30:58,991 INFO Shutting down...
+2026-02-06 15:30:59,004 INFO Stats: docker(recv=2493 match=0 filter=2493) mq(recv=0 ok=0 fail=0)
+2026-02-06 15:31:02,064 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-06 15:31:02,064 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-06 15:31:02,065 INFO RabbitMQ enabled: 10.0.100.130 queue=A0001
+2026-02-06 15:31:02,065 INFO Application started
+2026-02-06 15:31:02,065 INFO Connected to Docker daemon
+2026-02-06 15:31:02,070 INFO Connected to RabbitMQ: 10.0.100.130
+2026-02-06 15:31:02,070 INFO Consuming queue: A0001
+2026-02-06 15:32:25,310 INFO Shutting down...
+2026-02-06 15:32:25,323 INFO Stats: docker(recv=57 match=0 filter=57) mq(recv=0 ok=0 fail=0)
+2026-02-06 15:32:27,690 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-06 15:32:27,691 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-06 15:32:27,691 INFO RabbitMQ enabled: 10.0.100.130 queue=A0001
+2026-02-06 15:32:27,691 INFO Application started
+2026-02-06 15:32:27,691 INFO Connected to Docker daemon
+2026-02-06 15:32:27,693 INFO Connected to RabbitMQ: 10.0.100.130
+2026-02-06 15:32:27,694 INFO Consuming queue: A0001
+2026-02-06 15:35:03,322 INFO Shutting down...
+2026-02-06 15:35:03,335 INFO Stats: docker(recv=117 match=0 filter=117) mq(recv=0 ok=0 fail=0)
+2026-02-06 15:37:21,504 INFO Database connected: 10.0.100.130:5432/aetemdb
+2026-02-06 15:37:21,504 INFO Database ready
+2026-02-06 15:37:21,504 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-06 15:37:21,504 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-06 15:37:21,504 INFO RabbitMQ enabled: 10.0.100.130 queue=A0001
+2026-02-06 15:37:21,504 INFO Application started
+2026-02-06 15:37:21,504 INFO Connected to Docker daemon
+2026-02-06 15:37:21,506 INFO Connected to RabbitMQ: 10.0.100.130
+2026-02-06 15:37:21,508 INFO Consuming queue: A0001
+2026-02-09 11:21:56,362 INFO Shutting down...
+2026-02-09 11:21:56,388 INFO Database connection closed
+2026-02-09 11:21:56,388 INFO Stats: docker(recv=167292 match=0 filter=167292) mq(recv=0 ok=0 fail=0) db(ok=0 fail=0)
+2026-02-09 11:22:01,610 INFO Database connected: 10.0.100.130:5432/aetemdb
+2026-02-09 11:22:01,610 INFO Database ready
+2026-02-09 11:22:01,610 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-09 11:22:01,610 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-09 11:22:01,610 INFO RabbitMQ enabled: 10.0.100.130 queue=A0001
+2026-02-09 11:22:01,610 INFO Application started
+2026-02-09 11:22:01,610 INFO Connected to Docker daemon
+2026-02-09 11:22:01,613 INFO Connected to RabbitMQ: 10.0.100.130
+2026-02-09 11:22:01,615 INFO Consuming queue: A0001
+2026-02-09 12:47:30,997 INFO Message received: type=A0001 situationId=SI2601275dykg0 brigadePhaseId=BR260127shp4k0
+2026-02-09 12:47:31,036 INFO File exists: /deploy/data/aetem/app/2026/01/27/BR260127shp4k0.pdf
+2026-02-09 12:47:31,036 ERROR DB insert failed: Database.insert_analysis_history() got an unexpected keyword argument 'req_id'
+2026-02-09 12:47:31,036 INFO Waiting 5.0 seconds before webhook...
+2026-02-09 12:47:36,103 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200
+2026-02-09 12:49:06,146 INFO Shutting down...
+2026-02-09 12:49:06,147 INFO Database connection closed
+2026-02-09 12:49:13,190 INFO Database connected: 10.0.100.130:5432/aetemdb
+2026-02-09 12:49:13,191 INFO Database ready
+2026-02-09 12:49:13,191 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-09 12:49:13,191 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-09 12:49:13,191 INFO RabbitMQ enabled: 10.0.100.130 queue=A0001
+2026-02-09 12:49:13,191 INFO Application started
+2026-02-09 12:49:13,191 INFO Connected to Docker daemon
+2026-02-09 12:49:13,193 INFO Connected to RabbitMQ: 10.0.100.130
+2026-02-09 12:49:13,196 INFO Consuming queue: A0001
+2026-02-09 12:49:35,843 INFO Message received: type=A0001 situationId=SI2601275dykg0 brigadePhaseId=BR260127shp4k0
+2026-02-09 12:49:35,861 INFO File exists: /deploy/data/aetem/app/2026/01/27/BR260127shp4k0.pdf
+2026-02-09 12:49:35,863 INFO Inserted analysis_history: seq=1 type=A0001 status=P
+2026-02-09 12:49:35,863 INFO DB insert success: seq=1
+2026-02-09 12:49:35,863 INFO Waiting 5.0 seconds before webhook...
+2026-02-09 12:49:40,986 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 1/3)
+2026-02-09 12:49:42,001 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 2/3)
+2026-02-09 12:49:44,011 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 3/3)
+2026-02-09 12:49:44,011 ERROR Webhook failed after 3 attempts: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-09 16:52:54,814 INFO Shutting down...
+2026-02-09 16:52:54,815 INFO Database connection closed
+2026-02-09 16:55:12,195 INFO Database connected: 10.0.100.130:5432/aetemdb
+2026-02-09 16:55:12,195 INFO Database ready
+2026-02-09 16:55:12,195 INFO Docker watching images: nginx:alpine, task-runner:1.0.0, test-api:1.0.0, test-worker:1.0.0
+2026-02-09 16:55:12,195 INFO Docker watching actions: create, destroy, die, health_status, kill, oom, restart, start, stop
+2026-02-09 16:55:12,195 INFO RabbitMQ enabled: 10.0.100.130 queue=A0001
+2026-02-09 16:55:12,195 INFO Application started
+2026-02-09 16:55:12,195 INFO Connected to Docker daemon
+2026-02-09 16:55:12,197 INFO Connected to RabbitMQ: 10.0.100.130
+2026-02-09 16:55:12,198 INFO Consuming queue: A0001
+2026-02-09 16:55:12,199 INFO Message received: type=A0001 situationId=SI2601275dykg0 brigadePhaseId=BR260127shp4k0
+2026-02-09 16:55:12,216 INFO File exists: /deploy/data/aetem/app/2026/01/27/BR260127shp4k0.pdf
+2026-02-09 16:55:12,217 ERROR DB insert failed: value too long for type character varying(20)
+2026-02-09 16:55:12,217 INFO Waiting 5.0 seconds before webhook...
+2026-02-09 16:55:17,431 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 1/3)
+2026-02-09 16:55:18,443 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 2/3)
+2026-02-09 16:55:20,454 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 3/3)
+2026-02-09 16:55:20,454 ERROR Webhook failed after 3 attempts: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-09 16:55:20,455 INFO Message received: type=A0001 situationId=SI2601275dykg0 brigadePhaseId=BR260127shp4k0
+2026-02-09 16:55:20,455 INFO File exists: /deploy/data/aetem/app/2026/01/27/BR260127shp4k0.pdf
+2026-02-09 16:55:20,456 ERROR DB insert failed: value too long for type character varying(20)
+2026-02-09 16:55:20,456 INFO Waiting 5.0 seconds before webhook...
+2026-02-09 16:55:55,468 WARNING Webhook failed: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing error= (attempt 1/3)
+2026-02-09 16:55:56,655 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 2/3)
+2026-02-09 16:55:58,665 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 3/3)
+2026-02-09 16:55:58,665 ERROR Webhook failed after 3 attempts: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-09 16:59:17,239 INFO Message received: type=A0001 situationId=SI2601275dykg0 brigadePhaseId=BR260127shp4k0
+2026-02-09 16:59:17,254 INFO File exists: /deploy/data/aetem/app/2026/01/27/BR260127shp4k0.pdf
+2026-02-09 16:59:17,255 ERROR DB insert failed: value too long for type character varying(30)
+2026-02-09 16:59:17,255 INFO Waiting 5.0 seconds before webhook...
+2026-02-09 16:59:22,270 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 1/3)
+2026-02-09 16:59:23,281 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 2/3)
+2026-02-09 16:59:25,291 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 3/3)
+2026-02-09 16:59:25,291 ERROR Webhook failed after 3 attempts: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-09 17:00:58,724 INFO Message received: type=A0001 situationId=SI2601275dykg0 brigadePhaseId=BR260127shp4k0
+2026-02-09 17:00:58,739 INFO File exists: /deploy/data/aetem/app/2026/01/27/BR260127shp4k0.pdf
+2026-02-09 17:00:58,741 INFO Inserted analysis_history: seq=2 type=A0001 req_id=84fd12ab-4850-4c2c-80d6-0c281203f76d status=P
+2026-02-09 17:00:58,741 INFO DB insert success: seq=2
+2026-02-09 17:00:58,741 INFO Waiting 5.0 seconds before webhook...
+2026-02-09 17:01:03,743 INFO Updated analysis_history: seq=2 status=S
+2026-02-09 17:01:03,752 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 1/3)
+2026-02-09 17:01:04,762 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 2/3)
+2026-02-09 17:01:06,772 WARNING Webhook error: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=500 (attempt 3/3)
+2026-02-09 17:01:06,772 ERROR Webhook failed after 3 attempts: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing
+2026-02-09 17:23:22,875 INFO Message received: type=A0001 situationId=SI260209cryie0 brigadePhaseId=BR260209krmqu0
+2026-02-09 17:23:22,899 INFO File exists: /deploy/data/aetem/app/2026/02/09/input/BR260209krmqu0.pdf
+2026-02-09 17:23:22,913 INFO Inserted analysis_history: seq=3 type=A0001 req_id=1ee7dcfc-8658-4945-b56e-b8b3c7d7b72f status=P
+2026-02-09 17:23:22,913 INFO DB insert success: seq=3
+2026-02-09 17:23:22,913 INFO Waiting 5.0 seconds before webhook...
+2026-02-09 17:23:27,918 INFO Updated analysis_history: seq=3 status=S
+2026-02-09 17:23:27,959 INFO Webhook success: url=http://10.0.120.18:8080/apis/v1/inbound/brigade/opordPreProCessing status=200

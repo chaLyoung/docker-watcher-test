@@ -1,0 +1,16 @@
+# Docker
+aiodocker>=0.22.0
+
+# RabbitMQ
+aio-pika>=9.3.0
+
+# HTTP Client
+httpx>=0.26.0
+
+# Config
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+pyyaml>=6.0
+
+# PostgreSQL
+asyncpg>=0.29.0

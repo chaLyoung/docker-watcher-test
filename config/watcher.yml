@@ -1,0 +1,20 @@
+# Docker Watcher 설정
+
+watch:
+  images:
+    - "nginx:alpine"
+    - "test-api:1.0.0"
+    - "test-worker:1.0.0"
+    - "task-runner:1.0.0"
+
+events:
+  include_actions:
+    - "create"
+    - "start"
+    - "stop"
+    - "die"
+    - "kill"
+    - "destroy"
+    - "restart"
+    - "health_status"
+    - "oom"
