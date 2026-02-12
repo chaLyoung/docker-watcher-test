@@ -18,3 +18,18 @@ events:
     - "restart"
     - "health_status"
     - "oom"
+
+queues:
+  # ── container 모드: Docker 컨테이너 실행 후 종료 대기 ──
+  - name: A0001
+    analysis_type: opord-preprocess
+    mode: service
+    service_url: http://opord-preprocess:8100/summarizer
+
+  - name: A0002
+    analysis_type: concealment
+    mode: container
+    image: analysis-concealment:1.0.0
+    network: aetem_v2
+    volumes:
+      - "/deploy/data/aetem/app:/data:ro"

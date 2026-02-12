@@ -96,11 +96,12 @@ class Database:
         analysis_type: str,
         req_id: str,
         status: str,
+        publish_time=None,
         max_retries: int = 3,
     ) -> int:
         query = """
-            INSERT INTO analysis_history (analysis_type, req_id, status)
-            VALUES ($1, $2, $3)
+            INSERT INTO analysis_history (analysis_type, req_id, status, publish_time)
+            VALUES ($1, $2, $3, $4)
             RETURNING analysis_history_seq
         """
 
@@ -118,10 +119,10 @@ class Database:
             raise ConnectionError("Database not connected")
 
         # 쿼리 실행
-        seq = await self._pool.fetchval(query, analysis_type, req_id, status)
+        seq = await self._pool.fetchval(query, analysis_type, req_id, status, publish_time)
         logger.info(
-            "Inserted analysis_history: seq=%d type=%s req_id=%s status=%s",
-            seq, analysis_type, req_id, status,
+            "Inserted analysis_history: seq=%d type=%s req_id=%s status=%s publish_time=%s",
+            seq, analysis_type, req_id, status, str(publish_time),
         )
         return seq
 

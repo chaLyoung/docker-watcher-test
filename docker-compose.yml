@@ -9,7 +9,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config:/config:ro
       - ./logs:/app/logs
-      - /deploy/data/aetem/app:/deploy/data/aetem/app:ro  # 추가
+      - /deploy/data/aetem/app:/deploy/data/aetem/app  # 추가
 
     environment:
       - CONFIG_PATH=/config/watcher.yml
@@ -28,7 +28,6 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USERNAME=aistudio
       - RABBITMQ_PASSWORD=aistudio1@#$
-      - RABBITMQ_QUEUE_NAME=A0001
       
       # Webhook
       - WEBHOOK_TOKEN=hHRg8U3By8rrTo1Sc3Vwz5E1qwn9XNiuVruLDG6gq9XDMSCKwZ

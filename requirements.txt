@@ -14,3 +14,5 @@ pyyaml>=6.0
 
 # PostgreSQL
 asyncpg>=0.29.0
+
+shortuuid>=1.0.3
