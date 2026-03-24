@@ -100,7 +100,7 @@ class Database:
         max_retries: int = 3,
     ) -> int:
         query = """
-            INSERT INTO analysis_history (analysis_type, req_id, status, publish_time)
+            INSERT INTO analysis_history (analysis_type, req_id, analysis_status, publish_time)
             VALUES ($1, $2, $3, $4)
             RETURNING analysis_history_seq
         """
@@ -134,14 +134,14 @@ class Database:
         max_retries: int = 3,
     ) -> bool:
         """
-        analysis_history 테이블 UPDATE (end_time, status)
+        analysis_history 테이블 UPDATE (end_time, analysis_status)
 
         Returns:
             성공 여부
         """
         query = """
             UPDATE analysis_history
-            SET end_time = NOW(), status = $1
+            SET end_time = NOW(), analysis_status = $1
             WHERE analysis_history_seq = $2
         """
 

@@ -44,6 +44,25 @@ class WebhookConfig:
     timeout: int = 30
     retry_count: int = 3
 
+    def to_dict(self) -> dict:
+        from dataclasses import asdict
+        return asdict(self)
+
+
+@dataclass
+class WebhookPayload:
+    """Webhook 전송 페이로드"""
+    success: bool = True
+    message: Optional[str] = None
+    situationId: str = ""
+    brigadePhaseId: str = ""
+    reqId: str = ""
+    preproccessingPath: str = ""
+    
+    def to_dict(self) -> dict:
+        from dataclasses import asdict
+        return asdict(self)
+
 
 @dataclass
 class DockerConfig:
@@ -69,6 +88,7 @@ class QueueConfig:
     network: str = ""                   # container 모드: Docker 네트워크
     volumes: List[str] = field(default_factory=list)  # container 모드: 볼륨 마운트
     service_url: str = ""               # service 모드: 요청 URL
+    env_mapping: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -147,6 +167,7 @@ def _parse_queues(raw: list) -> List[QueueConfig]:
             network=item.get("network", ""),
             volumes=item.get("volumes", []),
             service_url=item.get("service_url", ""),
+            env_mapping=item.get("env_mapping", {}),
         ))
     return queues
 

@@ -26,7 +26,7 @@ import aio_pika
 import aiodocker
 import httpx
 
-from app.config import Config, QueueConfig
+from app.config import Config, QueueConfig, WebhookPayload
 from app.database import Database
 
 logger = logging.getLogger("watcher")
@@ -161,7 +161,7 @@ class AnalysisConsumer:
                     break
 
                 logger.error("[%s] RabbitMQ error: %s (retry in %.1fs)", qname, e, backoff)
-                
+
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30.0)
 
@@ -170,12 +170,12 @@ class AnalysisConsumer:
         qname = self.qcfg.name
         self.stats.mq_messages_received += 1
         seq = None
+        is_success = True
+        return_preproccessing_path = None
+        error_message = None
 
         try:
             headers = message.properties.headers or {}
-            logger.info("headers=%s", str(headers))
-            req_id = headers.get("x-aetem-log-trace-id")
-
             body = json.loads(message.body.decode())
 
             analysis_type = body.get("type", "")
@@ -185,23 +185,13 @@ class AnalysisConsumer:
             callback_url = body.get("callbackUrl", "")
             opord_path = body.get("opordPath", "").replace("\\", "/")
             req_id = body.get("requestId", "")
-            requestDateTime  = body.get("requestDateTime", "")
-            publish_time = datetime.fromtimestamp(int(requestDateTime) / 1000) if requestDateTime else None
-
-            if not req_id:
-                alphabet = string.ascii_lowercase + string.digits
-                su = shortuuid.ShortUUID(alphabet=alphabet)
-                req_id = str(su.random(length=8))
-                logger.warning("[%s] No x-aetem-log-trace-id in header, generated: %s", qname, req_id)
+            request_date_time  = body.get("requestDateTime", "")
+            publish_time = datetime.fromtimestamp(int(request_date_time) / 1000) if request_date_time else None
 
             logger.info(
                 "[%s] Message received: type=%s situationId=%s brigadePhaseId=%s battalion_phase_id=%s req_id=%s publish_time=%s",
                 qname, analysis_type, situation_id, brigade_phase_id, battalion_phase_id, req_id, publish_time,
             )
-
-            if not callback_url:
-                logger.warning("[%s] No callbackUrl in message, skipping", qname)
-                return
 
             # 파일 경로 확인
             full_path = os.path.join(self.config.data_root_path, opord_path)
@@ -209,62 +199,70 @@ class AnalysisConsumer:
             save_path = os.path.join(output_path, req_id)
             os.makedirs(save_path, exist_ok=True)
 
-            if not os.path.exists(full_path):
-                logger.warning("[%s] File not found: %s, skipping", qname, full_path)
+            if not req_id:
+                alphabet = string.ascii_lowercase + string.digits
+                su = shortuuid.ShortUUID(alphabet=alphabet)
+                req_id = str(su.random(length=8))
+                logger.warning("[%s] No x-aetem-log-trace-id in header, generated: %s", qname, req_id)
+
+            if not callback_url:
+                is_success = False
+                error_message = "No callbackUrl in message"
+                logger.warning("[%s] %s", qname, error_message)
                 return
 
-            logger.info("[%s] File exists: %s", qname, full_path)
-
-            # 1) DB INSERT
-            try:
-                seq = await self.db.insert_analysis_history(
-                    analysis_type=analysis_type,
-                    req_id=req_id,
-                    publish_time=publish_time,
-                    status="P",
-                )
-                logger.info("[%s] DB insert success: seq=%d", qname, seq)
-            except Exception as e:
-                logger.error("[%s] DB insert failed: %s", qname, e)
-
-            # 2) 분석 실행 (모드에 따라 분기)
-            try:
-                if self.qcfg.mode == "container":
-                    success = await self._run_container(body)
-                else:
-                    success = await self._call_service(full_path, req_id, save_path)
-            except Exception as e:
-                logger.exception("[%s] Analysis error: %s", qname, e)
-                success = False
-
-            if success:
-                self.stats.analysis_success += 1
-            else:
-                self.stats.analysis_failed += 1
-
-            # 3) DB UPDATE
-            if seq is not None:
-                status = "S" if success else "F"
+            if not os.path.exists(full_path):
+                is_success = False
+                error_message = "File not found, " + full_path
+                logger.warning("[%s] %s", qname, error_message)
+                return
+            
+            if is_success:
+                # 1) DB INSERT
                 try:
-                    await self.db.update_analysis_history(seq=seq, status=status)
-                    logger.info("[%s] DB update result: seq=%d status=%s", qname, seq, status)
+                    seq = await self.db.insert_analysis_history(
+                        analysis_type=analysis_type,
+                        req_id=req_id,
+                        publish_time=publish_time,
+                        status="10",
+                    )
+                    logger.info("[%s] DB insert success: seq=%d", qname, seq)
                 except Exception as e:
-                    logger.error("[%s] DB update failed: %s", qname, e)
+                    logger.error("[%s] DB insert failed: %s", qname, e)
 
-            # 4) Webhook 전송
-            # # 5초 대기
-            # delay = self.config.webhook.delay_seconds
-            # logger.info("Waiting %.1f seconds before webhook...", delay)
-            # await asyncio.sleep(delay)
-            payload = {
-                'situationId': situation_id,
-                'brigadePhaseId': brigade_phase_id,
-                'reqId': req_id,
-                'preproccessingPath': os.path.join(output_path, 'json', 'result.json'),
-            }
+                # 2) 분석 실행 (모드에 따라 분기)
+                try:
+                    if self.qcfg.mode == "container":
+                        success = await self._run_container(body)
+                    else:
+                        success = await self._call_service(full_path, req_id, save_path)
+                except Exception as e:
+                    error_message = "OPORD Analysis error"
+                    logger.exception("[%s] Analysis error: %s", qname, e)
+                    success = False
 
+                # 3) DB UPDATE
+                if seq is not None:
+                    status = "20" if success else "99"
+                    is_success = True if success else False
+                    try:
+                        await self.db.update_analysis_history(seq=seq, status=status)
+                        logger.info("[%s] DB update result: seq=%d status=%s", qname, seq, status)
+                    except Exception as e:
+                        logger.error("[%s] DB update failed: %s", qname, e)
 
-            success = await self.webhook.send(callback_url, payload)
+            
+            save_path = save_path.replace(self.config.data_root_path, "")
+            payload = WebhookPayload(
+                success=is_success,
+                message=error_message,
+                situationId=situation_id,
+                brigadePhaseId=brigade_phase_id,
+                reqId=req_id,
+                preproccessingPath=os.path.join(save_path, "json", "result.json"),
+            )
+            success = await self.webhook.send(callback_url, payload.to_dict())
+            
             if success:
                 logger.info("[%s] webhook send success: seq=%d", qname, seq)
             else:
@@ -290,7 +288,7 @@ class AnalysisConsumer:
             "HostConfig": {
                 "Binds": self.qcfg.volumes,
                 "NetworkMode": self.qcfg.network or "bridge",
-                "AutoRemove": False,
+                "AutoRemove": False, 
             },
         }
 
@@ -325,13 +323,22 @@ class AnalysisConsumer:
     def _build_env_vars(self, body: dict) -> dict:
         """메시지 본문에서 컨테이너 환경변수 생성"""
         env = {}
+
+        # 공통 환경변수
         for key in ("situationId", "brigadePhaseId", "opordPath", "callbackUrl"):
             value = body.get(key)
             if value is not None:
                 env[key.upper()] = str(value)
 
+        # 큐별 동적 환경변수 (watcher.yml env_mapping)
+        for body_key, env_name in self.qcfg.env_mapping.items():
+            value = body.get(body_key)
+            if value is not None:
+                env[env_name] = str(value)
+
         env["DATA_ROOT_PATH"] = self.config.data_root_path
         env["ANALYSIS_TYPE"] = self.qcfg.analysis_type
+        
         return env
 
     # ── Service 모드 ────────────────────────────────────────
@@ -557,7 +564,7 @@ class Application:
 
         s = self.stats
         logger.info(
-            "Stats: docker(recv=%d match=%d filter=%d) mq(recv=%d ok=%d fail=%d) db(ok=%d fail=%d)",
+            "Stats: docker(recv=%d match=%d filter=%d) mq(recv=%d ok=%d fail=%d)",
             s.docker_events_received, s.docker_events_matched, s.docker_events_filtered,
             s.mq_messages_received, s.analysis_success,  s.analysis_failed,
         )

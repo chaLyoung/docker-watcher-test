@@ -2,10 +2,18 @@
 
 watch:
   images:
-    - "nginx:alpine"
-    - "test-api:1.0.0"
-    - "test-worker:1.0.0"
-    - "task-runner:1.0.0"
+    - aetem-convert-data:latest
+    - aetem-obstacle:latest
+    - aetem-observation-viewshed:latest
+    - aetem-cover:latest
+    - aetem-observation-direct:latest
+    - aetem-observation-throwshed:latest
+    - aetem-concealment:latest
+    - aetem-costmap:latest
+    - aetem-pathfinding:latest
+    - aetem-aoa:latest
+    - aetem-movement-timeline:latest
+    - aetem-hilltop:latest
 
 events:
   include_actions:
@@ -33,3 +41,169 @@ queues:
     network: aetem_v2
     volumes:
       - "/deploy/data/aetem/app:/data:ro"
+
+  # ── 분석 모델 (Container 모드) ───────────────────
+  # B0001 — 가시권분석
+  - name: B0001
+    mode: container
+    analysis_type: "B0001"
+    image: "aetem-observation-viewshed:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      observerPositions: OBSERVER_POSITIONS   # 관측자 좌표 [[x,y,높이],...]  (EPSG:5186)
+      maxDistance: MAX_DISTANCE               # 최대 가시 거리 (m)
+
+  # B0002 — 사격선(직사)
+  - name: B0002
+    mode: container
+    analysis_type: "B0002"
+    image: "aetem-observation-direct:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      firePosition: FIRE_POSITION             # 사격 위치 [x,y,높이]  (EPSG:5186)
+      weaponParams: WEAPON_PARAMS             # 무기 파라미터 [최소사거리m,최대사거리m,최소부각°,최대앙각°,표적높이m]
+
+  # B0003 — 사격선(곡사)
+  - name: B0003
+    mode: container
+    analysis_type: "B0003"
+    image: "aetem-observation-throwshed:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      launch: LAUNCH                          # 발사 위치 [x,y,높이]  (EPSG:5186)
+      ballistic: BALLISTIC                    # 탄도 파라미터 [초속m/s,중력가속도m/s²,최소발사각°,최대발사각°]
+
+  # B0004 — 접근로
+  - name: B0004
+    mode: container
+    analysis_type: "B0004"
+    image: "aetem-aoa:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      targetPoint: TARGET_POINT               # 목표점 좌표 [x,y]  (EPSG:5186)
+      profile: PROFILE                        # 이동 프로파일 (pedestrian/wheeled/tracked)
+      retreatAzimuthDeg: RETREAT_AZIMUTH_DEG  # 아군 방위각 — 컷라인 필터용 (선택, °)
+
+  # B0005 — HILLTOP분석
+  - name: B0005
+    mode: container
+    analysis_type: "B0005"
+    image: "aetem-hilltop:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      userPosition: USER_POSITION             # 사용자 위치 [x,y]  (EPSG:5186)
+      searchRadius: SEARCH_RADIUS             # 봉우리 탐색 반경 (km)
+
+  # B0006 — 장애지형분석
+  - name: B0006
+    mode: container
+    analysis_type: "B0006"
+    image: "aetem-obstacle:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
+      rcRasterPath: RC_RASTER_PATH            # 유출계수 래스터 (runoff_c.tif)
+      codeRasterPath: CODE_RASTER_PATH        # 토지피복 코드 래스터 (code_l2_index.tif)
+      forestFrtpPath: FOREST_FRTP_PATH        # 유효 산림 마스크 (veg_valid.tif)
+      forestDnstPath: FOREST_DNST_PATH        # 산림 밀도 래스터 (s_dnst.tif)
+      forestAgclsPath: FOREST_AGCLS_PATH      # 산림 영급 래스터 (s_ag.tif)
+      forestDmclsPath: FOREST_DMCLS_PATH      # 산림 경급 래스터 (s_dm.tif)
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      profile: PROFILE                        # 이동 프로파일 (pedestrian/wheeled/tracked)
+
+  # B0007 — 은폐분석
+  - name: B0007
+    mode: container
+    analysis_type: "B0007"
+    image: "aetem-concealment:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 참조 격자 (shape, crs)
+      forestFrtpScorePath: FOREST_FRTP_SCORE_PATH  # 산림유형 은폐 점수 (s_frtp.tif)
+      forestDnstPath: FOREST_DNST_PATH        # 산림 밀도 래스터 (s_dnst.tif)
+      forestAgclsPath: FOREST_AGCLS_PATH      # 산림 영급 래스터 (s_ag.tif)
+      forestDmclsPath: FOREST_DMCLS_PATH      # 산림 경급 래스터 (s_dm.tif)
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+
+  # B0008 — 엄폐분석
+  - name: B0008
+    mode: container
+    analysis_type: "B0008"
+    image: "aetem-cover:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      enemyPositions: ENEMY_POSITIONS         # 적 관측자 위치 [[x,y,높이],...]  (EPSG:5186)
+      maxDistance: MAX_DISTANCE               # 최대 가시 거리 (m)
+
+  # B0009 — 진출선분석
+  - name: B0009
+    mode: container
+    analysis_type: "B0009"
+    image: "aetem-movement-timeline:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      start: START                            # 출발점 좌표 [x,y]  (EPSG:5186)
+      goal: GOAL                              # 도착점 좌표 [x,y]  (EPSG:5186)
+
+  # B0010 — 이동로분석
+  - name: B0010
+    mode: container
+    analysis_type: "B0010"
+    image: "aetem-pathfinding:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      start: START                            # 출발점 좌표 [x,y]  (EPSG:5186)
+      goal: GOAL                              # 도착점 좌표 [x,y]  (EPSG:5186)
+      profile: PROFILE                        # 이동 프로파일 (pedestrian/wheeled/tracked)
+      mode: MODE                              # 경로 모드 (relaxed/strict/all)
+
+  # C0001 — 데이터 변환
+  - name: C0001
+    mode: container
+    analysis_type: "convert_data"
+    image: "aetem-convert-data:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      baseDataDir: BASE_DATA_DIR              # 입력 데이터 루트 디렉토리
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
+      clipAreaShp: CLIP_AREA_SHP              # 분석 영역 클립 Shapefile (AREA.shp)
+      forestZipFolder: FOREST_ZIP_FOLDER      # 임상도 ZIP 폴더 경로
+      landcoverZipFolder: LANDCOVER_ZIP_FOLDER  # 토지피복도 ZIP 폴더 경로
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      steps: STEPS                            # 실행 단계 (all/forest/landcover/tif)
+
+  # C0002 — 비용맵 생성
+  - name: C0002
+    mode: container
+    analysis_type: "costmap"
+    image: "aetem-costmap:latest"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
+      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+      profile: PROFILE                        # 이동 프로파일 (pedestrian/wheeled/tracked)
