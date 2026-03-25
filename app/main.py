@@ -17,7 +17,11 @@ import uuid
 import string
 import shortuuid
 
-from dataclasses import dataclass, field
+import gzip
+import shutil
+from logging.handlers import TimedRotatingFileHandler
+
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from typing import Optional
@@ -28,6 +32,7 @@ import httpx
 
 from app.config import Config, QueueConfig, WebhookPayload
 from app.database import Database
+from app.cog_converter import convert_tif_to_cog
 
 logger = logging.getLogger("watcher")
 
@@ -75,7 +80,7 @@ class WebhookSender:
                 response = await self._client.post(url, content=data)
 
                 if response.status_code < 300:
-                    logger.info("Webhook success: url=%s status=%d", url, response.status_code)
+                    logger.info("⭕ Webhook success: url=%s status=%d", url, response.status_code)
                     return True
 
                 logger.warning(
@@ -90,9 +95,9 @@ class WebhookSender:
                 )
 
             if attempt < self.retry_count - 1:
-                await asyncio.sleep(1.0 * (attempt + 1))
+                await asyncio.sleep(1.0)
 
-        logger.error("Webhook failed after %d attempts: url=%s", self.retry_count, url)
+        logger.error("❌ Webhook failed after %d attempts: url=%s", self.retry_count, url)
         return False
 
     async def close(self):
@@ -166,121 +171,188 @@ class AnalysisConsumer:
                 backoff = min(backoff * 2, 30.0)
 
     async def _handle_message(self, message: aio_pika.IncomingMessage):
-        """메시지 처리: 파일 확인 → DB INSERT → 분석 실행 → DB UPDATE → Webhook"""
+        """메시지 처리: DB INSERT → 분석 실행 → DB UPDATE → Webhook"""
         qname = self.qcfg.name
         self.stats.mq_messages_received += 1
         seq = None
         is_success = True
-        return_preproccessing_path = None
         error_message = None
+        save_path = ""
 
         try:
-            headers = message.properties.headers or {}
             body = json.loads(message.body.decode())
 
+            if isinstance(body, str):
+                body = json.loads(body)
+
+            # MQ 메시지 전체 로깅 (pretty)
+            logger.info("✅ [%s] MQ body:\n%s", qname, json.dumps(body, indent=2, ensure_ascii=False))
+
+            # ── 공통 필드 (모든 큐 공통) ──
             analysis_type = body.get("type", "")
-            situation_id = body.get("situationId", "")
-            brigade_phase_id = body.get("brigadePhaseId", "")
-            battalion_phase_id = body.get("battalion_phase_id", "")
             callback_url = body.get("callbackUrl", "")
-            opord_path = body.get("opordPath", "").replace("\\", "/")
             req_id = body.get("requestId", "")
-            request_date_time  = body.get("requestDateTime", "")
+            request_date_time = body.get("requestDateTime", "")
             publish_time = datetime.fromtimestamp(int(request_date_time) / 1000) if request_date_time else None
 
-            logger.info(
-                "[%s] Message received: type=%s situationId=%s brigadePhaseId=%s battalion_phase_id=%s req_id=%s publish_time=%s",
-                qname, analysis_type, situation_id, brigade_phase_id, battalion_phase_id, req_id, publish_time,
-            )
-
-            # 파일 경로 확인
-            full_path = os.path.join(self.config.data_root_path, opord_path)
-            output_path = os.path.dirname(full_path).replace("/input", "/output")
-            save_path = os.path.join(output_path, req_id)
-            os.makedirs(save_path, exist_ok=True)
+            # container 모드 Webhook용
+            request_user_id = body.get("requestUserId")
+            battalion_phase_id = body.get("battalionPhaseId")
+            battalion_aspect_id = body.get("battalionAspectId")
 
             if not req_id:
                 alphabet = string.ascii_lowercase + string.digits
                 su = shortuuid.ShortUUID(alphabet=alphabet)
                 req_id = str(su.random(length=8))
-                logger.warning("[%s] No x-aetem-log-trace-id in header, generated: %s", qname, req_id)
+                logger.warning("[%s] Generated req_id: %s", qname, req_id)
 
+            # ── 공통 검증: callbackUrl만 필수 ──
             if not callback_url:
-                is_success = False
-                error_message = "No callbackUrl in message"
-                logger.warning("[%s] %s", qname, error_message)
+                logger.warning("[%s] No callbackUrl, skipping", qname)
                 return
 
-            if not os.path.exists(full_path):
-                is_success = False
-                error_message = "File not found, " + full_path
-                logger.warning("[%s] %s", qname, error_message)
-                return
-            
-            if is_success:
-                # 1) DB INSERT
-                try:
-                    seq = await self.db.insert_analysis_history(
-                        analysis_type=analysis_type,
-                        req_id=req_id,
-                        publish_time=publish_time,
-                        status="10",
-                    )
-                    logger.info("[%s] DB insert success: seq=%d", qname, seq)
-                except Exception as e:
-                    logger.error("[%s] DB insert failed: %s", qname, e)
+            # ── 작업 디렉토리 구성 (container 모드용) ──
+            yyyymm = datetime.now().strftime("%Y%m")
+            work_dir_host = os.path.join(self.config.spatial_data_path, yyyymm, req_id)
+            work_dir_container = os.path.join(self.config.spatial_mount_path, yyyymm, req_id)
 
-                # 2) 분석 실행 (모드에 따라 분기)
-                try:
-                    if self.qcfg.mode == "container":
-                        success = await self._run_container(body)
+            # ── 1) DB INSERT ──
+            try:
+                seq = await self.db.insert_analysis_history(
+                    analysis_type=analysis_type,
+                    req_id=req_id,
+                    publish_time=publish_time,
+                    status="10",
+                )
+                logger.info("[%s] DB insert success: seq=%d", qname, seq)
+            except Exception as e:
+                logger.error("[%s] DB insert failed: %s", qname, e)
+
+            # ── 2) 분석 실행 (모드별 분기) ──
+            try:
+                if self.qcfg.mode == "container":
+                    logger.info("[%s] Running container mode: image=%s work_dir=%s",
+                                qname, self.qcfg.image, work_dir_container)
+                    is_success, error_message = await self._run_container(body, req_id, work_dir_container)
+                else:
+                    # Service 모드: 파일 경로 검증
+                    opord_path = body.get("opordPath", "").replace("\\", "/")
+                    full_path = os.path.join(self.config.data_root_path, opord_path)
+                    output_path = os.path.dirname(full_path).replace("/input", "/output")
+                    save_path = os.path.join(output_path, req_id)
+                    os.makedirs(save_path, exist_ok=True)
+
+                    logger.info("[%s] Running service mode: url=%s full_path=%s save_path=%s",
+                                qname, self.qcfg.service_url, full_path, save_path)
+
+                    if not os.path.exists(full_path):
+                        is_success = False
+                        error_message = "File not found: " + full_path
+                        logger.warning("[%s] %s", qname, error_message)
                     else:
-                        success = await self._call_service(full_path, req_id, save_path)
-                except Exception as e:
-                    error_message = "OPORD Analysis error"
-                    logger.exception("[%s] Analysis error: %s", qname, e)
-                    success = False
+                        logger.info("[%s] File verified: %s", qname, full_path)
+                        is_success, error_message = await self._call_service(full_path, req_id, save_path)
+            except Exception as e:
+                is_success = False
+                error_message = f"Analysis error: {e}"
+                logger.exception("[%s] %s", qname, error_message)
 
-                # 3) DB UPDATE
-                if seq is not None:
-                    status = "20" if success else "99"
-                    is_success = True if success else False
-                    try:
-                        await self.db.update_analysis_history(seq=seq, status=status)
-                        logger.info("[%s] DB update result: seq=%d status=%s", qname, seq, status)
-                    except Exception as e:
-                        logger.error("[%s] DB update failed: %s", qname, e)
-
-            
-            save_path = save_path.replace(self.config.data_root_path, "")
-            payload = WebhookPayload(
-                success=is_success,
-                message=error_message,
-                situationId=situation_id,
-                brigadePhaseId=brigade_phase_id,
-                reqId=req_id,
-                preproccessingPath=os.path.join(save_path, "json", "result.json"),
-            )
-            success = await self.webhook.send(callback_url, payload.to_dict())
-            
-            if success:
-                logger.info("[%s] webhook send success: seq=%d", qname, seq)
+            if is_success:
+                self.stats.analysis_success += 1
             else:
-                logger.info("[%s] webhook send failed: seq=%d", qname, seq)
+                self.stats.analysis_failed += 1
+
+            # ── 3) DB UPDATE ──
+            if seq is not None:
+                status = "20" if is_success else "99"
+                try:
+                    await self.db.update_analysis_history(seq=seq, status=status)
+                    logger.info("[%s] DB update: seq=%d status=%s", qname, seq, status)
+                except Exception as e:
+                    logger.error("[%s] DB update failed: %s", qname, e)
+
+            # ── 4) Webhook 전송 ──
+            if self.qcfg.mode == "service":
+                # Service 모드: 기존 포맷
+                save_path = save_path.replace(self.config.data_root_path, "")
+                payload = WebhookPayload(
+                    success=is_success,
+                    message=error_message,
+                    requestId=req_id,
+                    situationId=body.get("situationId", ""),
+                    brigadePhaseId=body.get("brigadePhaseId", ""),
+                    preproccessingPath=os.path.join(save_path, "json", "result.json"),
+                )
+            else:
+                # Container 모드: API 명세서 포맷 (tiff/shape)
+                payload = self._build_webhook_payload(
+                    is_success=is_success,
+                    error_message=error_message,
+                    req_id=req_id,
+                    request_user_id=request_user_id,
+                    battalion_phase_id=battalion_phase_id,
+                    battalion_aspect_id=battalion_aspect_id,
+                    work_dir_host=work_dir_host,
+                    body=body,
+                )
+
+            logger.info("[%s] Sending webhook: url=%s\n%s", qname, callback_url, json.dumps(payload.to_dict(), indent=2, ensure_ascii=False))
+            webhook_result = await self.webhook.send(callback_url, payload.to_dict())
 
         except json.JSONDecodeError as e:
-            logger.error("[%s] Invalid JSON message: %s", qname, e)
+            logger.error("[%s] Invalid JSON: %s", qname, e)
         except Exception as e:
             logger.exception("[%s] Message handling error: %s", qname, e)
 
+    def _build_webhook_payload(
+        self,
+        is_success: bool,
+        error_message: Optional[str],
+        req_id: str,
+        request_user_id: Optional[str],
+        battalion_phase_id: Optional[str],
+        battalion_aspect_id: Optional[str],
+        work_dir_host: str,
+        body: dict,
+    ) -> WebhookPayload:
+        """Container 모드: 큐 설정(response_type, result_filename)에 따라 Webhook 페이로드 생성"""
+        payload = WebhookPayload(
+            success=is_success,
+            message=error_message,
+            requestId=req_id,
+            requestUserId=request_user_id,
+            battalionPhaseId=battalion_phase_id,
+            battalionAspectId=battalion_aspect_id,
+        )
+
+        if not is_success:
+            return payload
+
+        # result_filename에 {profile} 등 치환
+        filename = self.qcfg.result_filename
+        if "{profile}" in filename:
+            profile = body.get("profile", "pedestrian")
+            filename = filename.replace("{profile}", profile)
+
+        result_path = os.path.join(work_dir_host, filename)
+
+        if self.qcfg.response_type == "shape":
+            payload.shapePath = result_path
+        else:
+            # tiff: gisTiffPath + cogTiffPath
+            payload.gisTiffPath = result_path
+            base, ext = os.path.splitext(result_path)
+            payload.cogTiffPath = f"{base}_cog{ext}"
+
+        return payload
+
     # ── Container 모드 ──────────────────────────────────────
 
-    async def _run_container(self, body: dict) -> bool:
-        """Docker 컨테이너 실행 후 종료 대기"""
+    async def _run_container(self, body: dict, req_id: str, work_dir: str) -> tuple[bool, Optional[str]]:
+        """Docker 컨테이너 실행 후 종료 대기 → (성공여부, 에러메시지) 반환"""
         qname = self.qcfg.name
         container_name = f"{qname}-{uuid.uuid4().hex[:8]}"
-
-        env_vars = self._build_env_vars(body)
+        env_vars = self._build_env_vars(body, work_dir)
 
         container_config = {
             "Image": self.qcfg.image,
@@ -288,69 +360,164 @@ class AnalysisConsumer:
             "HostConfig": {
                 "Binds": self.qcfg.volumes,
                 "NetworkMode": self.qcfg.network or "bridge",
-                "AutoRemove": False, 
+                "AutoRemove": False,
             },
         }
 
         container = None
         try:
-            logger.info("[%s] Creating container: image=%s name=%s", qname, self.qcfg.image, container_name)
-            container = await self.docker.containers.create_or_run(
+            # Docker run 명령어 형식으로 로깅
+            docker_cmd_lines = ["docker run --rm \\"]
+            for bind in self.qcfg.volumes:
+                docker_cmd_lines.append(f"  -v {bind} \\")
+            for k, v in env_vars.items():
+                docker_cmd_lines.append(f"  -e {k}={v} \\")
+            if self.qcfg.network:
+                docker_cmd_lines.append(f"  --network {self.qcfg.network} \\")
+            docker_cmd_lines.append(f"  --name {container_name} \\")
+            docker_cmd_lines.append(f"  {self.qcfg.image}")
+            logger.info("[%s] Running:\n%s", qname, "\n".join(docker_cmd_lines))
+
+            container = await self.docker.containers.create(
                 config=container_config, name=container_name,
             )
+
+            # 출력 디렉토리 미리 생성 (호스트 경로)
+            host_work_dir = work_dir.replace(
+                self.config.spatial_mount_path,
+                self.config.spatial_data_path,
+            )
+            os.makedirs(host_work_dir, exist_ok=True)
+            logger.info("[%s] Output dir created: %s", qname, host_work_dir)
+
+            start_time = datetime.now()
             await container.start()
+
             logger.info("[%s] Container started: %s", qname, container_name)
 
-            # 컨테이너 종료 대기
-            result = await container.wait()
-            exit_code = result.get("StatusCode", -1)
-            logger.info("[%s] Container finished: name=%s exit_code=%d", qname, container_name, exit_code)
+            timeout = self.qcfg.timeout or 600
+            result = await asyncio.wait_for(container.wait(), timeout=timeout)
+            end_time = datetime.now()
 
-            return exit_code == 0
+            exit_code = result.get("StatusCode", -1)
+            elapsed = (end_time - start_time).total_seconds()
+
+            logger.info(
+                "[%s] Container finished: name=%s exit_code=%d elapsed=%.2fs (start=%s end=%s)",
+                qname, container_name, exit_code, elapsed,
+                start_time.strftime("%H:%M:%S.%f")[:-3],
+                end_time.strftime("%H:%M:%S.%f")[:-3],
+            )
+
+            # 1) 컨테이너 종료 코드 확인
+            if exit_code != 0:
+                # 컨테이너 에러 로그 수집
+                try:
+                    logs = await container.log(stdout=True, stderr=True)
+                    container_logs = "".join(logs).strip()
+                    if container_logs:
+                        logger.error("❌[%s] Container logs (%s):\n%s", qname, container_name, container_logs[-2000:])
+                except Exception:
+                    pass
+                    
+                msg = f"Container exited with code {exit_code}"
+                logger.error("[%s] %s", qname, msg)
+                return False, msg
+
+            # 2) 산출물 파일 존재 확인
+            if self.qcfg.result_filename:
+                filename = self.qcfg.result_filename
+                if "{profile}" in filename:
+                    profile = body.get("profile", "pedestrian")
+                    filename = filename.replace("{profile}", profile)
+
+                result_path = os.path.join(host_work_dir, filename)
+
+                if not os.path.exists(result_path):
+                    msg = f"Output file not found: {result_path}"
+                    logger.error("[%s] %s", qname, msg)
+                    return False, msg
+
+                logger.info("[%s] Output verified: %s", qname, result_path)
+
+                # 2) tiff 타입이면 COG 변환
+                if self.qcfg.response_type == "tiff":
+                    try:
+                        base, ext = os.path.splitext(result_path)
+                        cog_path = f"{base}_cog{ext}"
+                        convert_tif_to_cog(result_path, cog_path)
+
+                        # COG 파일 존재 확인
+                        if not os.path.exists(cog_path):
+                            msg = f"COG file not created: {cog_path}"
+                            logger.error("[%s] %s", qname, msg)
+                            return False, msg
+
+                        logger.info("[%s] COG verified: %s", qname, cog_path)
+
+                    except Exception as e:
+                        msg = f"COG conversion failed: {e}"
+                        logger.error("[%s] %s", qname, msg)
+                        return False, msg
+
+            return True, None
+
+        except asyncio.TimeoutError:
+            msg = f"Container timeout after {timeout}s: {container_name}"
+            logger.error("[%s] %s", qname, msg)
+            return False, msg
 
         except Exception as e:
-            logger.error("[%s] Container error: name=%s error=%s", qname, container_name, e)
-            return False
+            msg = f"Container error: {e}"
+            logger.error("[%s] %s: name=%s", qname, msg, container_name)
+            return False, msg
 
         finally:
             if container:
+                try:
+                    await container.kill()
+                except Exception:
+                    pass
                 try:
                     await container.delete(force=True)
                     logger.info("[%s] Container removed: %s", qname, container_name)
                 except Exception:
                     pass
 
-    def _build_env_vars(self, body: dict) -> dict:
-        """메시지 본문에서 컨테이너 환경변수 생성"""
+    def _build_env_vars(self, body: dict, work_dir: str) -> dict:
+        """메시지 본문 + 작업 디렉토리에서 컨테이너 환경변수 생성"""
         env = {}
 
-        # 공통 환경변수
-        for key in ("situationId", "brigadePhaseId", "opordPath", "callbackUrl"):
-            value = body.get(key)
-            if value is not None:
-                env[key.upper()] = str(value)
+        # 1) 작업 디렉토리 기반 기본값 (DEM_PATH, OUTPUT_PATH)
+        env["OUTPUT_PATH"] = work_dir
+        env["DEM_PATH"] = os.path.join(work_dir, "DEM.tif")
 
-        # 큐별 동적 환경변수 (watcher.yml env_mapping)
+        # 3) 큐별 고정 환경변수 (watcher.yml env)       ← 이 부분 추가
+        env.update(self.qcfg.env)
+
+        # 2) 큐별 동적 환경변수 (MQ body → Docker ENV, env_mapping)
+        #    MQ 메시지에 값이 있으면 기본값을 덮어씀
         for body_key, env_name in self.qcfg.env_mapping.items():
             value = body.get(body_key)
             if value is not None:
                 env[env_name] = str(value)
 
+        # 3) 시스템 환경변수
         env["DATA_ROOT_PATH"] = self.config.data_root_path
         env["ANALYSIS_TYPE"] = self.qcfg.analysis_type
-        
+
         return env
 
     # ── Service 모드 ────────────────────────────────────────
 
-    async def _call_service(self, full_path: str, req_id: str, save_path: str) -> bool:
-        """이미 실행 중인 Docker 서비스에 HTTP 요청"""
+    async def _call_service(self, full_path: str, req_id: str, save_path: str) -> tuple[bool, Optional[str]]:
+        """HTTP 서비스 호출 → (성공여부, 에러메시지) 반환"""
         qname = self.qcfg.name
         url = self.qcfg.service_url
 
         try:
             logger.info("[%s] Calling service: %s", qname, url)
-            
+
             payload = {
                 "req_id": req_id,
                 "input_path": full_path,
@@ -368,14 +535,16 @@ class AnalysisConsumer:
 
             if response.status_code < 300:
                 logger.info("[%s] Service success: status=%d", qname, response.status_code)
-                return True
+                return True, None
 
-            logger.warning("[%s] Service error: status=%d body=%s", qname, response.status_code, response.text[:200])
-            return False
+            msg = f"Service error: status={response.status_code} body={response.text[:200]}"
+            logger.warning("[%s] %s", qname, msg)
+            return False, msg
 
         except Exception as e:
-            logger.error("[%s] Service call failed: %s", qname, e)
-            return False
+            msg = f"Service call failed: {e}"
+            logger.error("[%s] %s", qname, msg)
+            return False, msg
 
     # ── Lifecycle ───────────────────────────────────────────
 
@@ -566,7 +735,7 @@ class Application:
         logger.info(
             "Stats: docker(recv=%d match=%d filter=%d) mq(recv=%d ok=%d fail=%d)",
             s.docker_events_received, s.docker_events_matched, s.docker_events_filtered,
-            s.mq_messages_received, s.analysis_success,  s.analysis_failed,
+            s.mq_messages_received, s.analysis_success, s.analysis_failed,
         )
 
     def shutdown(self):
@@ -580,19 +749,43 @@ def setup_logging(log_dir: str):
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
     logger.setLevel(logging.INFO)
 
+    # 콘솔 출력
     console = logging.StreamHandler(sys.stdout)
     console.setFormatter(fmt)
     logger.addHandler(console)
 
+    # 날짜별 로그 파일
     os.makedirs(log_dir, exist_ok=True)
-    file_handler = RotatingFileHandler(
-        os.path.join(log_dir, "watcher.log"),
-        maxBytes=10 * 1024 * 1024,
-        backupCount=5,
+    log_path = os.path.join(log_dir, "aetem-v2-watcher.log")
+
+    file_handler = TimedRotatingFileHandler(
+        log_path,
+        when="midnight",           # 자정 기준 롤오버
+        interval=1,                # 1일 간격
+        backupCount=30,            # 최대 30일 보관
         encoding="utf-8",
     )
+    file_handler.suffix = "%Y_%m_%d.0.log"              # 롤오버된 파일명 접미사
+    file_handler.namer = _log_namer                      # 파일명 형식 커스텀
+    file_handler.rotator = _log_rotator                  # gz 압축
     file_handler.setFormatter(fmt)
     logger.addHandler(file_handler)
+
+
+def _log_namer(name: str) -> str:
+    """aetem-v2-watcher.2026_02_02.0.log 형식으로 변환"""
+    # name = "/var/log/aetem/watcher/aetem-v2-watcher.log.2026_02_02.0.log"
+    # → "/var/log/aetem/watcher/aetem-v2-watcher.2026_02_02.0.log.gz"
+    base = name.replace(".log.", ".")
+    return base + ".gz"
+
+
+def _log_rotator(source: str, dest: str):
+    """롤오버 시 이전 로그를 gz 압축"""
+    with open(source, "rb") as f_in:
+        with gzip.open(dest, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    os.remove(source)
 
 
 # ============================================================

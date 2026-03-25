@@ -28,182 +28,218 @@ events:
     - "oom"
 
 queues:
-  # ── container 모드: Docker 컨테이너 실행 후 종료 대기 ──
-  - name: A0001
-    analysis_type: opord-preprocess
-    mode: service
-    service_url: http://opord-preprocess:8100/summarizer
-
-  - name: A0002
-    analysis_type: concealment
-    mode: container
-    image: analysis-concealment:1.0.0
-    network: aetem_v2
-    volumes:
-      - "/deploy/data/aetem/app:/data:ro"
-
-  # ── 분석 모델 (Container 모드) ───────────────────
   # B0001 — 가시권분석
+  # MQ: { callbackUrl, type, requestId, requestDateTime, observerPositions }
+  # 응답: { success, message, requestId, gisTiffPath, cogTiffPath }
   - name: B0001
     mode: container
     analysis_type: "B0001"
-    image: "aetem-observation-viewshed:latest"
+    image: "analysis_observation_viewshed"
+    timeout: 600
+    response_type: "tiff"
+    result_filename: "viewshed.tif" # 산출물: 가시권 래스터
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      observerPositions: OBSERVER_POSITIONS   # 관측자 좌표 [[x,y,높이],...]  (EPSG:5186)
-      maxDistance: MAX_DISTANCE               # 최대 가시 거리 (m)
+      observerPositions: OBSERVER_POSITIONS # 관측자 좌표 [[x,y],...] (EPSG:5186)
+      maxDistance: MAX_DISTANCE
+    env:
+      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
 
-  # B0002 — 사격선(직사)
+  # B0002 — 사격선분석 (직사)
+  # MQ: { callbackUrl, type, requestId, requestDateTime, firePositions, weaponParams }
+  # 응답: { success, message, requestId, gisTiffPath, cogTiffPath }
   - name: B0002
     mode: container
     analysis_type: "B0002"
-    image: "aetem-observation-direct:latest"
+    image: "analysis_observation_direct"
+    timeout: 600
+    response_type: "tiff"
+    result_filename: "direct_fire_viewshed.tif" # 산출물: 사격 가능 영역
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      firePosition: FIRE_POSITION             # 사격 위치 [x,y,높이]  (EPSG:5186)
-      weaponParams: WEAPON_PARAMS             # 무기 파라미터 [최소사거리m,최대사거리m,최소부각°,최대앙각°,표적높이m]
+      firePositions: FIRE_POSITIONS # 사격 위치 [[x,y],...] (EPSG:5186)
+      weaponParams: WEAPON_PARAMS # [최소사거리,최대사거리,최소부각°,최대앙각°,표적높이m]
+    env:
+      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
 
-  # B0003 — 사격선(곡사)
+  # B0003 — 사격선분석 (곡사)
+  # MQ: { callbackUrl, type, requestId, requestDateTime, launch, ballistic }
+  # 응답: { success, message, requestId, gisTiffPath, cogTiffPath }
   - name: B0003
     mode: container
     analysis_type: "B0003"
     image: "aetem-observation-throwshed:latest"
+    timeout: 600
+    response_type: "tiff"
+    result_filename: "throwshed_combined_any.tif" # 산출물: 곡사 도달 합집합
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      launch: LAUNCH                          # 발사 위치 [x,y,높이]  (EPSG:5186)
-      ballistic: BALLISTIC                    # 탄도 파라미터 [초속m/s,중력가속도m/s²,최소발사각°,최대발사각°]
+      launch: LAUNCH # 발사 위치 [x,y,높이] (EPSG:5186)
+      ballistic: BALLISTIC # [초속m/s,중력m/s²,최소발사각°,최대발사각°]
 
-  # B0004 — 접근로
+  # B0004 — 접근로분석
+  # MQ: { callbackUrl, type, requestId, requestDateTime, targetPoint, profile, retreatAzimuthDeg }
+  # 응답: { success, message, requestId, shapePath }
   - name: B0004
     mode: container
     analysis_type: "B0004"
     image: "aetem-aoa:latest"
+    timeout: 600
+    response_type: "shape"
+    result_filename: "routes_{profile}.zip" # 산출물: 접근로 LineString
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      targetPoint: TARGET_POINT               # 목표점 좌표 [x,y]  (EPSG:5186)
-      profile: PROFILE                        # 이동 프로파일 (pedestrian/wheeled/tracked)
-      retreatAzimuthDeg: RETREAT_AZIMUTH_DEG  # 아군 방위각 — 컷라인 필터용 (선택, °)
+      targetPoint: TARGET_POINT # 목표점 [x,y] (EPSG:5186)
+      profile: PROFILE # pedestrian/wheeled/tracked
+      retreatAzimuthDeg: RETREAT_AZIMUTH_DEG # 아군 방위각 (선택, °)
 
-  # B0005 — HILLTOP분석
+  # B0005 — 핵심지형분석 (HILLTOP)
+  # MQ: { callbackUrl, type, requestId, requestDateTime, userPosition, searchPadius }
+  # 응답: { success, message, requestId, shapePath }
   - name: B0005
     mode: container
     analysis_type: "B0005"
-    image: "aetem-hilltop:latest"
+    image: "analysis_hilltop"
+    timeout: 600
+    response_type: "shape"
+    result_filename: "best_tophill.zip" # 산출물: 최적 봉우리
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      userPosition: USER_POSITION             # 사용자 위치 [x,y]  (EPSG:5186)
-      searchRadius: SEARCH_RADIUS             # 봉우리 탐색 반경 (km)
+      userPosition: USER_POSITION # 사용자 위치 [x,y] (EPSG:5186)
+      searchPadius: SEARCH_RADIUS # 탐색 반경 (km) — 명세서 키: searchPadius
+    env:
+      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
 
   # B0006 — 장애지형분석
+  # MQ: { callbackUrl, type, requestId, requestDateTime, profile }
+  # 응답: { success, message, requestId, gisTiffPath, cogTiffPath }
   - name: B0006
     mode: container
     analysis_type: "B0006"
-    image: "aetem-obstacle:latest"
+    image: "analysis_obstacle"
+    timeout: 600
+    response_type: "tiff"
+    result_filename: "class_{profile}_barrier.tif" # 산출물: 프로파일별 장벽 분류
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
-      rcRasterPath: RC_RASTER_PATH            # 유출계수 래스터 (runoff_c.tif)
-      codeRasterPath: CODE_RASTER_PATH        # 토지피복 코드 래스터 (code_l2_index.tif)
-      forestFrtpPath: FOREST_FRTP_PATH        # 유효 산림 마스크 (veg_valid.tif)
-      forestDnstPath: FOREST_DNST_PATH        # 산림 밀도 래스터 (s_dnst.tif)
-      forestAgclsPath: FOREST_AGCLS_PATH      # 산림 영급 래스터 (s_ag.tif)
-      forestDmclsPath: FOREST_DMCLS_PATH      # 산림 경급 래스터 (s_dm.tif)
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      profile: PROFILE                        # 이동 프로파일 (pedestrian/wheeled/tracked)
+      profile: PROFILE # pedestrian/wheeled/tracked
+    env:
+      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
+      RC_RASTER_PATH: "/mnt/data/pyeongchang/input/convert_data/runoff_c.tif"
+      CODE_RASTER_PATH: "/mnt/data/pyeongchang/input/convert_data/code_l2_index.tif"
+      FOREST_FRTP_PATH: "/mnt/data/pyeongchang/input/convert_data/veg_valid.tif"
+      FOREST_DNST_PATH: "/mnt/data/pyeongchang/input/convert_data/s_dnst.tif"
+      FOREST_AGCLS_PATH: "/mnt/data/pyeongchang/input/convert_data/s_ag.tif"
+      FOREST_DMCLS_PATH: "/mnt/data/pyeongchang/input/convert_data/s_dm.tif"
 
   # B0007 — 은폐분석
+  # MQ: { callbackUrl, type, requestId, requestDateTime }
+  # 응답: { success, message, requestId, gisTiffPath, cogTiffPath }
   - name: B0007
     mode: container
     analysis_type: "B0007"
-    image: "aetem-concealment:latest"
+    image: "analysis_concealment"
+    timeout: 600
+    response_type: "tiff"
+    result_filename: "forest_concealment_index.tif" # 산출물: 은폐 지수 (0~1)
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
-    env_mapping:
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 참조 격자 (shape, crs)
-      forestFrtpScorePath: FOREST_FRTP_SCORE_PATH  # 산림유형 은폐 점수 (s_frtp.tif)
-      forestDnstPath: FOREST_DNST_PATH        # 산림 밀도 래스터 (s_dnst.tif)
-      forestAgclsPath: FOREST_AGCLS_PATH      # 산림 영급 래스터 (s_ag.tif)
-      forestDmclsPath: FOREST_DMCLS_PATH      # 산림 경급 래스터 (s_dm.tif)
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
+    env_mapping: {} # 추가 환경변수 없음 (DEM/OUTPUT 자동)
+    env:
+      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
+      FOREST_FRTP_SCORE_PATH: "/mnt/data/pyeongchang/input/convert_data/s_frtp.tif"
+      FOREST_DNST_PATH: "/mnt/data/pyeongchang/input/convert_data/s_dnst.tif"
+      FOREST_AGCLS_PATH: "/mnt/data/pyeongchang/input/convert_data/s_ag.tif"
+      FOREST_DMCLS_PATH: "/mnt/data/pyeongchang/input/convert_data/s_dm.tif"
 
   # B0008 — 엄폐분석
+  # MQ: { callbackUrl, type, requestId, requestDateTime, enemyPositions, maxDistance }
+  # 응답: { success, message, requestId, gisTiffPath, cogTiffPath }
   - name: B0008
     mode: container
     analysis_type: "B0008"
     image: "aetem-cover:latest"
+    timeout: 600
+    response_type: "tiff"
+    result_filename: "hidden.tif" # 산출물: 엄폐 가능 영역
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      enemyPositions: ENEMY_POSITIONS         # 적 관측자 위치 [[x,y,높이],...]  (EPSG:5186)
-      maxDistance: MAX_DISTANCE               # 최대 가시 거리 (m)
+      enemyPositions: ENEMY_POSITIONS # 적 위치 [[x,y,높이],...] (EPSG:5186)
+      maxDistance: MAX_DISTANCE # 최대 가시 거리 (m)
 
   # B0009 — 진출선분석
+  # MQ: { callbackUrl, type, requestId, requestDateTime, start, goal }
+  # 응답: { success, message, requestId, shapePath }
   - name: B0009
     mode: container
     analysis_type: "B0009"
     image: "aetem-movement-timeline:latest"
+    timeout: 600
+    response_type: "shape"
+    result_filename: "timeline_segments.zip" # 산출물: 구간별 진출선
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      start: START                            # 출발점 좌표 [x,y]  (EPSG:5186)
-      goal: GOAL                              # 도착점 좌표 [x,y]  (EPSG:5186)
+      start: START # 출발점 [x,y] (EPSG:5186)
+      goal: GOAL # 도착점 [x,y] (EPSG:5186)
 
   # B0010 — 이동로분석
+  # MQ: { callbackUrl, type, requestId, requestDateTime, start, goal, profile }
+  # 응답: { success, message, requestId, shapePath }
   - name: B0010
     mode: container
     analysis_type: "B0010"
-    image: "aetem-pathfinding:latest"
+    image: "analysis_pathfinding"
+    timeout: 600
+    response_type: "shape"
+    result_filename: "path_{profile}.zip" # 산출물: 탐색 경로
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      start: START                            # 출발점 좌표 [x,y]  (EPSG:5186)
-      goal: GOAL                              # 도착점 좌표 [x,y]  (EPSG:5186)
-      profile: PROFILE                        # 이동 프로파일 (pedestrian/wheeled/tracked)
-      mode: MODE                              # 경로 모드 (relaxed/strict/all)
+      start: START # 출발점 [x,y] (EPSG:5186)
+      goal: GOAL # 도착점 [x,y] (EPSG:5186)
+      profile: PROFILE # pedestrian/wheeled/tracked
+    env:
+      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
+      COSTMAP_DIR: "/mnt/data/pyeongchang/input/costmap"
 
-  # C0001 — 데이터 변환
-  - name: C0001
+  # ============================================================
+  # 전처리 (Container 모드)
+  # ============================================================
+
+  # B1001 — 데이터 변환
+  - name: B1001
     mode: container
     analysis_type: "convert_data"
     image: "aetem-convert-data:latest"
+    timeout: 1800
+    response_type: "tiff"
+    result_filename: "veg_valid.tif"
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      baseDataDir: BASE_DATA_DIR              # 입력 데이터 루트 디렉토리
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
-      clipAreaShp: CLIP_AREA_SHP              # 분석 영역 클립 Shapefile (AREA.shp)
-      forestZipFolder: FOREST_ZIP_FOLDER      # 임상도 ZIP 폴더 경로
-      landcoverZipFolder: LANDCOVER_ZIP_FOLDER  # 토지피복도 ZIP 폴더 경로
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      steps: STEPS                            # 실행 단계 (all/forest/landcover/tif)
+      baseDataDir: BASE_DATA_DIR # 입력 데이터 루트
+      clipAreaShp: CLIP_AREA_SHP # 클립 영역 Shapefile
+      forestZipFolder: FOREST_ZIP_FOLDER # 임상도 ZIP 폴더
+      landcoverZipFolder: LANDCOVER_ZIP_FOLDER # 토지피복도 ZIP 폴더
+      steps: STEPS # 실행 단계 (all/forest/landcover/tif)
 
-  # C0002 — 비용맵 생성
-  - name: C0002
+  # B1002 — 비용맵 생성
+  - name: B1002
     mode: container
     analysis_type: "costmap"
     image: "aetem-costmap:latest"
+    timeout: 1200
+    response_type: "tiff"
+    result_filename: "effective_cost_{profile}_relaxed.tif"
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
-      demPath: DEM_PATH                       # 수치표고모델(DEM) 파일 경로
-      outputPath: OUTPUT_PATH                 # 결과 출력 디렉토리 경로
-      profile: PROFILE                        # 이동 프로파일 (pedestrian/wheeled/tracked)
+      profile: PROFILE # pedestrian/wheeled/tracked`

@@ -2,7 +2,7 @@
 Docker Watcher 설정
 """
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import List, Optional
 from urllib.parse import quote
@@ -44,24 +44,33 @@ class WebhookConfig:
     timeout: int = 30
     retry_count: int = 3
 
-    def to_dict(self) -> dict:
-        from dataclasses import asdict
-        return asdict(self)
-
 
 @dataclass
 class WebhookPayload:
-    """Webhook 전송 페이로드"""
+    """Webhook 전송 페이로드
+
+    - service 모드: success, message, requestId, situationId, brigadePhaseId, preproccessingPath
+    - container 모드 (tiff): success, message, requestId, gisTiffPath, cogTiffPath
+    - container 모드 (shape): success, message, requestId, shapePath
+    """
     success: bool = True
     message: Optional[str] = None
-    situationId: str = ""
-    brigadePhaseId: str = ""
-    reqId: str = ""
-    preproccessingPath: str = ""
-    
+    requestId: Optional[str] = None
+    # service 모드용
+    situationId: Optional[str] = None
+    brigadePhaseId: Optional[str] = None
+    preproccessingPath: Optional[str] = None
+    # container 모드용
+    gisTiffPath: Optional[str] = None
+    cogTiffPath: Optional[str] = None
+    shapePath: Optional[str] = None
+    requestUserId: Optional[str] = None
+    battalionPhaseId: Optional[str] = None
+    battalionAspectId: Optional[str] = None
+
     def to_dict(self) -> dict:
-        from dataclasses import asdict
-        return asdict(self)
+        """None 필드 제외하고 dict 변환"""
+        return {k: v for k, v in asdict(self).items() if v is not None}
 
 
 @dataclass
@@ -81,14 +90,18 @@ class DockerConfig:
 @dataclass
 class QueueConfig:
     """개별 큐 설정"""
-    name: str                           # 큐 이름 (e.g. A0001)
-    analysis_type: str                  # 분석 유형 (DB 기록용)
-    mode: str = "container"             # "container" | "service"
-    image: str = ""                     # container 모드: Docker 이미지
-    network: str = ""                   # container 모드: Docker 네트워크
-    volumes: List[str] = field(default_factory=list)  # container 모드: 볼륨 마운트
-    service_url: str = ""               # service 모드: 요청 URL
+    name: str                                           # 큐 이름 (e.g. A0001)
+    analysis_type: str                                  # 분석 유형 (DB 기록용)
+    mode: str = "container"                             # "container" | "service"
+    image: str = ""                                     # container 모드: Docker 이미지
+    network: str = ""                                   # container 모드: Docker 네트워크
+    volumes: List[str] = field(default_factory=list)    # container 모드: 볼륨 마운트
+    service_url: str = ""                               # service 모드: 요청 URL
     env_mapping: dict = field(default_factory=dict)
+    response_type: str = "tiff"                         # 응답 타입: "tiff" | "shape"
+    result_filename: str = ""                           # 산출물 파일명 (e.g. "viewshed.tif")
+    env: dict = field(default_factory=dict)             # 고정 환경변수
+    timeout: int = 600
 
 
 @dataclass
@@ -98,9 +111,11 @@ class Config:
     rabbitmq: RabbitMQConfig
     webhook: WebhookConfig
     postgres: PostgresConfig
-    queues: List[QueueConfig]
+    queues: List[QueueConfig] = field(default_factory=list)
     log_dir: str = "/app/logs"
     data_root_path: str = "/deploy/data/aetem/app"
+    spatial_data_path: str = "/deploy/data/aetem/app/spatial"
+    spatial_mount_path: str = "/mnt/data"
 
     @classmethod
     def load(cls) -> "Config":
@@ -108,14 +123,12 @@ class Config:
         config_path = os.getenv("CONFIG_PATH", "/config/watcher.yml")
         yaml_data = _load_yaml(config_path)
 
-        # Docker 설정
         docker = DockerConfig(
             url=os.getenv("DOCKER_BASE_URL"),
             watch_images=yaml_data.get("watch_images", set()),
             include_actions=yaml_data.get("include_actions", {"start", "stop", "die"}),
         )
 
-        # RabbitMQ 설정
         rabbitmq = RabbitMQConfig(
             enabled=os.getenv("RABBITMQ_ENABLED", "").lower() in ("true", "1", "yes"),
             host=os.getenv("RABBITMQ_HOST", "localhost"),
@@ -124,15 +137,13 @@ class Config:
             password=os.getenv("RABBITMQ_PASSWORD", "guest"),
         )
 
-        # Webhook 설정
         webhook = WebhookConfig(
             token=os.getenv("WEBHOOK_TOKEN", ""),
             delay_seconds=float(os.getenv("WEBHOOK_DELAY_SECONDS", "5.0")),
-            timeout=int(os.getenv("WEBHOOK_TIMEOUT", "30")),
+            timeout=int(os.getenv("WEBHOOK_TIMEOUT", "10")),
             retry_count=int(os.getenv("WEBHOOK_RETRY_COUNT", "3")),
         )
 
-        # PostgreSQL 설정
         postgres = PostgresConfig(
             host=os.getenv("POSTGRES_HOST", "localhost"),
             port=int(os.getenv("POSTGRES_PORT", "5432")),
@@ -141,7 +152,6 @@ class Config:
             password=os.getenv("POSTGRES_PASSWORD", "postgres"),
         )
 
-        # 큐 설정 (YAML)
         queues = _parse_queues(yaml_data.get("queues", []))
 
         return cls(
@@ -152,6 +162,8 @@ class Config:
             queues=queues,
             log_dir=os.getenv("LOG_DIR", "/app/logs"),
             data_root_path=os.getenv("DATA_ROOT_PATH", "/deploy/data/aetem/app"),
+            spatial_data_path=os.getenv("SPATIAL_DATA_PATH", "/deploy/data/aetem/app/spatial"),
+            spatial_mount_path=os.getenv("SPATIAL_MOUNT_PATH", "/mnt/data"),
         )
 
 
@@ -168,6 +180,10 @@ def _parse_queues(raw: list) -> List[QueueConfig]:
             volumes=item.get("volumes", []),
             service_url=item.get("service_url", ""),
             env_mapping=item.get("env_mapping", {}),
+            response_type=item.get("response_type", "tiff"),
+            result_filename=item.get("result_filename", ""),
+            timeout=item.get("timeout", 600),
+            env=item.get("env", {}),
         ))
     return queues
 

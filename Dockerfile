@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl tzdata \
+    && apt-get install -y --no-install-recommends ca-certificates curl tzdata libexpat1 \
     && ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime \
     && rm -rf /var/lib/apt/lists/*
 

@@ -8,7 +8,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config:/config:ro
-      - ./logs:/app/logs
+      - /var/log/aetem/watcher:/var/log/aetem/watcher
       - /deploy/data/aetem/app:/deploy/data/aetem/app  # 추가
 
     environment:
@@ -37,6 +37,8 @@ services:
 
       # Data
       - DATA_ROOT_PATH=/deploy/data/aetem/app
+      - SPATIAL_DATA_PATH=/deploy/data/aetem/app/spatial    # 경로만 알려주면 됨
+      - SPATIAL_MOUNT_PATH=/mnt/data
 
     networks:
       - aetem_v2
