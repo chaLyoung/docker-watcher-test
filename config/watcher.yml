@@ -28,6 +28,12 @@ events:
     - "oom"
 
 queues:
+  # ── Service 모드 ──────────────────────────────────
+  - name: A0001
+    analysis_type: opord-preprocess
+    mode: service
+    service_url: http://opord-preprocess:8100/summarizer
+
   # B0001 — 가시권분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, observerPositions }
   # 응답: { success, message, requestId, gisTiffPath, cogTiffPath }
