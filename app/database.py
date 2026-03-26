@@ -94,14 +94,19 @@ class Database:
     async def insert_analysis_history(
         self,
         analysis_type: str,
-        req_id: str,
+        request_id: str,
         status: str,
-        publish_time=None,
+        request_date_time=None,
+        request_user_id: str = None,
+        battalion_phase_id: str = None,
+        battalion_aspect_id: str = None,
         max_retries: int = 3,
     ) -> int:
         query = """
-            INSERT INTO analysis_history (analysis_type, req_id, analysis_status, publish_time)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO analysis_history 
+                (analysis_type, request_id, analysis_status, request_date_time,
+                 request_user_id, battalion_phase_id, battalion_aspect_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING analysis_history_seq
         """
 
@@ -119,10 +124,14 @@ class Database:
             raise ConnectionError("Database not connected")
 
         # 쿼리 실행
-        seq = await self._pool.fetchval(query, analysis_type, req_id, status, publish_time)
+        seq = await self._pool.fetchval(
+            query, analysis_type, request_id, status, request_date_time,
+            request_user_id, battalion_phase_id, battalion_aspect_id,
+        )
         logger.info(
-            "Inserted analysis_history: seq=%d type=%s req_id=%s status=%s publish_time=%s",
-            seq, analysis_type, req_id, status, str(publish_time),
+            "Inserted analysis_history: seq=%d type=%s request_id=%s status=%s request_datetime=%s user=%s phase=%s aspect=%s",
+            seq, analysis_type, request_id, status, request_date_time,
+            request_user_id, battalion_phase_id, battalion_aspect_id,
         )
         return seq
 

@@ -191,7 +191,7 @@ class AnalysisConsumer:
             # ── 공통 필드 (모든 큐 공통) ──
             analysis_type = body.get("type", "")
             callback_url = body.get("callbackUrl", "")
-            req_id = body.get("requestId", "")
+            request_id = body.get("requestId", "")
             request_date_time = body.get("requestDateTime", "")
             publish_time = datetime.fromtimestamp(int(request_date_time) / 1000) if request_date_time else None
 
@@ -200,11 +200,11 @@ class AnalysisConsumer:
             battalion_phase_id = body.get("battalionPhaseId")
             battalion_aspect_id = body.get("battalionAspectId")
 
-            if not req_id:
+            if not request_id:
                 alphabet = string.ascii_lowercase + string.digits
                 su = shortuuid.ShortUUID(alphabet=alphabet)
-                req_id = str(su.random(length=8))
-                logger.warning("[%s] Generated req_id: %s", qname, req_id)
+                request_id = str(su.random(length=8))
+                logger.warning("[%s] Generated request_id: %s", qname, request_id)
 
             # ── 공통 검증: callbackUrl만 필수 ──
             if not callback_url:
@@ -213,15 +213,18 @@ class AnalysisConsumer:
 
             # ── 작업 디렉토리 구성 (container 모드용) ──
             yyyymm = datetime.now().strftime("%Y%m")
-            work_dir_host = os.path.join(self.config.spatial_data_path, yyyymm, req_id)
-            work_dir_container = os.path.join(self.config.spatial_mount_path, yyyymm, req_id)
+            work_dir_host = os.path.join(self.config.spatial_data_path, yyyymm, request_id)
+            work_dir_container = os.path.join(self.config.spatial_mount_path, yyyymm, request_id)
 
             # ── 1) DB INSERT ──
             try:
                 seq = await self.db.insert_analysis_history(
                     analysis_type=analysis_type,
-                    req_id=req_id,
-                    publish_time=publish_time,
+                    request_id=request_id,
+                    request_user_id=request_user_id,
+                    battalion_phase_id=battalion_phase_id,
+                    battalion_aspect_id=battalion_aspect_id,
+                    request_date_time=publish_time,
                     status="10",
                 )
                 logger.info("[%s] DB insert success: seq=%d", qname, seq)
@@ -233,13 +236,13 @@ class AnalysisConsumer:
                 if self.qcfg.mode == "container":
                     logger.info("[%s] Running container mode: image=%s work_dir=%s",
                                 qname, self.qcfg.image, work_dir_container)
-                    is_success, error_message = await self._run_container(body, req_id, work_dir_container)
+                    is_success, error_message = await self._run_container(body, request_id, work_dir_container)
                 else:
                     # Service 모드: 파일 경로 검증
                     opord_path = body.get("opordPath", "").replace("\\", "/")
                     full_path = os.path.join(self.config.data_root_path, opord_path)
                     output_path = os.path.dirname(full_path).replace("/input", "/output")
-                    save_path = os.path.join(output_path, req_id)
+                    save_path = os.path.join(output_path, request_id)
                     os.makedirs(save_path, exist_ok=True)
 
                     logger.info("[%s] Running service mode: url=%s full_path=%s save_path=%s",
@@ -251,7 +254,7 @@ class AnalysisConsumer:
                         logger.warning("[%s] %s", qname, error_message)
                     else:
                         logger.info("[%s] File verified: %s", qname, full_path)
-                        is_success, error_message = await self._call_service(full_path, req_id, save_path)
+                        is_success, error_message = await self._call_service(full_path, request_id, save_path)
             except Exception as e:
                 is_success = False
                 error_message = f"Analysis error: {e}"
@@ -278,7 +281,7 @@ class AnalysisConsumer:
                 payload = WebhookPayload(
                     success=is_success,
                     message=error_message,
-                    requestId=req_id,
+                    requestId=request_id,
                     situationId=body.get("situationId", ""),
                     brigadePhaseId=body.get("brigadePhaseId", ""),
                     preproccessingPath=os.path.join(save_path, "json", "result.json"),
@@ -288,7 +291,7 @@ class AnalysisConsumer:
                 payload = self._build_webhook_payload(
                     is_success=is_success,
                     error_message=error_message,
-                    req_id=req_id,
+                    request_id=request_id,
                     request_user_id=request_user_id,
                     battalion_phase_id=battalion_phase_id,
                     battalion_aspect_id=battalion_aspect_id,
@@ -308,7 +311,7 @@ class AnalysisConsumer:
         self,
         is_success: bool,
         error_message: Optional[str],
-        req_id: str,
+        request_id: str,
         request_user_id: Optional[str],
         battalion_phase_id: Optional[str],
         battalion_aspect_id: Optional[str],
@@ -319,7 +322,7 @@ class AnalysisConsumer:
         payload = WebhookPayload(
             success=is_success,
             message=error_message,
-            requestId=req_id,
+            requestId=request_id,
             requestUserId=request_user_id,
             battalionPhaseId=battalion_phase_id,
             battalionAspectId=battalion_aspect_id,
@@ -348,7 +351,7 @@ class AnalysisConsumer:
 
     # ── Container 모드 ──────────────────────────────────────
 
-    async def _run_container(self, body: dict, req_id: str, work_dir: str) -> tuple[bool, Optional[str]]:
+    async def _run_container(self, body: dict, request_id: str, work_dir: str) -> tuple[bool, Optional[str]]:
         """Docker 컨테이너 실행 후 종료 대기 → (성공여부, 에러메시지) 반환"""
         qname = self.qcfg.name
         container_name = f"{qname}-{uuid.uuid4().hex[:8]}"
@@ -510,7 +513,7 @@ class AnalysisConsumer:
 
     # ── Service 모드 ────────────────────────────────────────
 
-    async def _call_service(self, full_path: str, req_id: str, save_path: str) -> tuple[bool, Optional[str]]:
+    async def _call_service(self, full_path: str, request_id: str, save_path: str) -> tuple[bool, Optional[str]]:
         """HTTP 서비스 호출 → (성공여부, 에러메시지) 반환"""
         qname = self.qcfg.name
         url = self.qcfg.service_url
@@ -519,7 +522,7 @@ class AnalysisConsumer:
             logger.info("[%s] Calling service: %s", qname, url)
 
             payload = {
-                "req_id": req_id,
+                "request_id": request_id,
                 "input_path": full_path,
                 "output_path": save_path,
             }
