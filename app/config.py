@@ -102,6 +102,7 @@ class QueueConfig:
     result_filename: str = ""                           # 산출물 파일명 (e.g. "viewshed.tif")
     env: dict = field(default_factory=dict)             # 고정 환경변수
     timeout: int = 600
+    concurrency: int = 1
 
 
 @dataclass
@@ -184,6 +185,7 @@ def _parse_queues(raw: list) -> List[QueueConfig]:
             result_filename=item.get("result_filename", ""),
             timeout=item.get("timeout", 600),
             env=item.get("env", {}),
+            concurrency=item.get("concurrency", 1),
         ))
     return queues
 

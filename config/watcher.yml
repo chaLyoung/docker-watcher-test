@@ -2,18 +2,18 @@
 
 watch:
   images:
-    - aetem-convert-data:latest
-    - aetem-obstacle:latest
-    - aetem-observation-viewshed:latest
-    - aetem-cover:latest
-    - aetem-observation-direct:latest
-    - aetem-observation-throwshed:latest
-    - aetem-concealment:latest
-    - aetem-costmap:latest
-    - aetem-pathfinding:latest
-    - aetem-aoa:latest
-    - aetem-movement-timeline:latest
-    - aetem-hilltop:latest
+    - analysis-convert-data:latest
+    - analysis-obstacle:latest
+    - analysis-observation-viewshed:latest
+    - analysis-cover:latest
+    - analysis-observation-direct:latest
+    - analysis-observation-throwshed:latest
+    - analysis-concealment:latest
+    - analysis-costmap:latest
+    - analysis-pathfinding:latest
+    - analysis-aoa:latest
+    - analysis-movement-timeline:latest
+    - analysis-hilltop:latest
 
 events:
   include_actions:
@@ -40,7 +40,7 @@ queues:
   - name: B0001
     mode: container
     analysis_type: "B0001"
-    image: "analysis_observation_viewshed"
+    image: "analysis-observation-viewshed"
     timeout: 600
     response_type: "tiff"
     result_filename: "viewshed.tif" # 산출물: 가시권 래스터
@@ -58,7 +58,7 @@ queues:
   - name: B0002
     mode: container
     analysis_type: "B0002"
-    image: "analysis_observation_direct"
+    image: "analysis-observation-direct"
     timeout: 600
     response_type: "tiff"
     result_filename: "direct_fire_viewshed.tif" # 산출물: 사격 가능 영역
@@ -76,7 +76,7 @@ queues:
   - name: B0003
     mode: container
     analysis_type: "B0003"
-    image: "aetem-observation-throwshed:latest"
+    image: "analysis-observation-throwshed:latest"
     timeout: 600
     response_type: "tiff"
     result_filename: "throwshed_combined_any.tif" # 산출물: 곡사 도달 합집합
@@ -85,6 +85,8 @@ queues:
     env_mapping:
       launch: LAUNCH # 발사 위치 [x,y,높이] (EPSG:5186)
       ballistic: BALLISTIC # [초속m/s,중력m/s²,최소발사각°,최대발사각°]
+    env:
+      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
 
   # B0004 — 접근로분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, targetPoint, profile, retreatAzimuthDeg }
@@ -92,7 +94,7 @@ queues:
   - name: B0004
     mode: container
     analysis_type: "B0004"
-    image: "aetem-aoa:latest"
+    image: "analysis-aoa:latest"
     timeout: 600
     response_type: "shape"
     result_filename: "routes_{profile}.zip" # 산출물: 접근로 LineString
@@ -109,7 +111,7 @@ queues:
   - name: B0005
     mode: container
     analysis_type: "B0005"
-    image: "analysis_hilltop"
+    image: "analysis-hilltop"
     timeout: 600
     response_type: "shape"
     result_filename: "best_tophill.zip" # 산출물: 최적 봉우리
@@ -127,7 +129,7 @@ queues:
   - name: B0006
     mode: container
     analysis_type: "B0006"
-    image: "analysis_obstacle"
+    image: "analysis-obstacle"
     timeout: 600
     response_type: "tiff"
     result_filename: "class_{profile}_barrier.tif" # 산출물: 프로파일별 장벽 분류
@@ -150,7 +152,7 @@ queues:
   - name: B0007
     mode: container
     analysis_type: "B0007"
-    image: "analysis_concealment"
+    image: "analysis-concealment"
     timeout: 600
     response_type: "tiff"
     result_filename: "forest_concealment_index.tif" # 산출물: 은폐 지수 (0~1)
@@ -170,7 +172,7 @@ queues:
   - name: B0008
     mode: container
     analysis_type: "B0008"
-    image: "aetem-cover:latest"
+    image: "analysis-cover:latest"
     timeout: 600
     response_type: "tiff"
     result_filename: "hidden.tif" # 산출물: 엄폐 가능 영역
@@ -186,7 +188,7 @@ queues:
   - name: B0009
     mode: container
     analysis_type: "B0009"
-    image: "aetem-movement-timeline:latest"
+    image: "analysis-movement-timeline:latest"
     timeout: 600
     response_type: "shape"
     result_filename: "timeline_segments.zip" # 산출물: 구간별 진출선
@@ -202,10 +204,11 @@ queues:
   - name: B0010
     mode: container
     analysis_type: "B0010"
-    image: "analysis_pathfinding"
+    image: "analysis-pathfinding"
     timeout: 600
     response_type: "shape"
     result_filename: "path_{profile}.zip" # 산출물: 탐색 경로
+    concurrency: 1
     volumes:
       - "/deploy/data/aetem/app/spatial:/mnt/data"
     env_mapping:
@@ -224,7 +227,7 @@ queues:
   - name: B1001
     mode: container
     analysis_type: "convert_data"
-    image: "aetem-convert-data:latest"
+    image: "analysis-convert-data:latest"
     timeout: 1800
     response_type: "tiff"
     result_filename: "veg_valid.tif"
@@ -236,12 +239,14 @@ queues:
       forestZipFolder: FOREST_ZIP_FOLDER # 임상도 ZIP 폴더
       landcoverZipFolder: LANDCOVER_ZIP_FOLDER # 토지피복도 ZIP 폴더
       steps: STEPS # 실행 단계 (all/forest/landcover/tif)
+    env:
+      BASE_PATH: /mnt/data/pyeongchang/input/base_data
 
   # B1002 — 비용맵 생성
   - name: B1002
     mode: container
     analysis_type: "costmap"
-    image: "aetem-costmap:latest"
+    image: "analysis-costmap:latest"
     timeout: 1200
     response_type: "tiff"
     result_filename: "effective_cost_{profile}_relaxed.tif"

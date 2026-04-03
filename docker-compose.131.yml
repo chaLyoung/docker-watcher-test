@@ -1,5 +1,5 @@
 services:
-  docker-watcher:
+  aetem-v2-watcher:
     environment:
       - POSTGRES_HOST=10.0.100.131
       - RABBITMQ_HOST=10.0.100.131

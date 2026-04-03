@@ -52,6 +52,54 @@ class Stats:
     mq_messages_received: int = 0
     analysis_success: int = 0
     analysis_failed: int = 0
+    # 큐별 처리 시간 통계
+    queue_times: dict = field(default_factory=dict)  # 추가
+
+    def record_time(self, queue_name: str, elapsed: float, success: bool):
+        """큐별 처리 시간 기록"""
+        if queue_name not in self.queue_times:
+            self.queue_times[queue_name] = {
+                "count": 0, "success": 0, "failed": 0,
+                "total_sec": 0.0,
+                "min_sec": float("inf"),
+                "max_sec": 0.0,
+                "times": [],
+                "batch_start": datetime.now(),  # 추가
+            }
+        s = self.queue_times[queue_name]
+        s["count"] += 1
+        if success:
+            s["success"] += 1
+        else:
+            s["failed"] += 1
+        s["total_sec"] += elapsed
+        s["min_sec"] = min(s["min_sec"], elapsed)
+        s["max_sec"] = max(s["max_sec"], elapsed)
+        s["times"].append(elapsed)
+
+    def get_summary(self, queue_name: str) -> str:
+        s = self.queue_times.get(queue_name)
+        if not s or s["count"] == 0:
+            return "no data"
+
+        avg = s["total_sec"] / s["count"]
+        times = sorted(s["times"])
+        median = times[len(times) // 2]
+        wall_time = (datetime.now() - s["batch_start"]).total_seconds()
+
+        return (
+            f"count={s['count']} success={s['success']} failed={s['failed']} | "
+            f"avg={avg:.1f}s min={s['min_sec']:.1f}s max={s['max_sec']:.1f}s "
+            f"median={median:.1f}s | "
+            f"wall_time={wall_time:.1f}s"
+        )
+
+    def get_all_summary(self) -> str:
+        """전체 큐 통계"""
+        lines = []
+        for qname in sorted(self.queue_times.keys()):
+            lines.append(f"  [{qname}] {self.get_summary(qname)}")
+        return "\n".join(lines) if lines else "  no data"
 
 
 # ============================================================
@@ -138,6 +186,8 @@ class AnalysisConsumer:
         """큐 연결 후 메시지 consume (재연결 포함)"""
         qname = self.qcfg.name
         backoff = 1.0
+        concurrency = self.qcfg.concurrency
+        semaphore = asyncio.Semaphore(concurrency)
 
         while not self._shutdown.is_set():
             try:
@@ -146,18 +196,21 @@ class AnalysisConsumer:
                 backoff = 1.0
 
                 channel = await connection.channel()
-                await channel.set_qos(prefetch_count=1)
+                await channel.set_qos(prefetch_count=concurrency)
                 queue = await channel.declare_queue(qname, durable=True)
 
-                logger.info("[%s] Consuming (mode=%s)", qname, self.qcfg.mode)
+                logger.info("[%s] Consuming (mode=%s, concurrency=%d)", qname, self.qcfg.mode, concurrency)
 
-                async with queue.iterator() as queue_iter:
-                    async for message in queue_iter:
-                        if self._shutdown.is_set():
-                            break
-
+                async def on_message(message: aio_pika.IncomingMessage):
+                    async with semaphore:
                         async with message.process():
                             await self._handle_message(message)
+
+                await queue.consume(on_message)
+
+                # shutdown 대기
+                while not self._shutdown.is_set():
+                    await asyncio.sleep(1.0)
 
             except asyncio.CancelledError:
                 break
@@ -174,10 +227,12 @@ class AnalysisConsumer:
         """메시지 처리: DB INSERT → 분석 실행 → DB UPDATE → Webhook"""
         qname = self.qcfg.name
         self.stats.mq_messages_received += 1
+        msg_start_time = datetime.now()  # 추가: 시작 시간
         seq = None
         is_success = True
         error_message = None
         save_path = ""
+        elapsed = None
 
         try:
             body = json.loads(message.body.decode())
@@ -299,13 +354,34 @@ class AnalysisConsumer:
                     body=body,
                 )
 
-            logger.info("[%s] Sending webhook: url=%s\n%s", qname, callback_url, json.dumps(payload.to_dict(), indent=2, ensure_ascii=False))
-            webhook_result = await self.webhook.send(callback_url, payload.to_dict())
+            elapsed = (datetime.now() - msg_start_time).total_seconds()
+
+            payload_dict = payload.to_dict()
+            payload_dict["processingTime"] = round(elapsed, 2)
+            logger.info("[%s] Sending webhook: url=%s\n%s", qname, callback_url, json.dumps(payload_dict, indent=2, ensure_ascii=False))
+            webhook_result = await self.webhook.send(callback_url, payload_dict)
 
         except json.JSONDecodeError as e:
+            elapsed = (datetime.now() - msg_start_time).total_seconds()
             logger.error("[%s] Invalid JSON: %s", qname, e)
         except Exception as e:
+            elapsed = (datetime.now() - msg_start_time).total_seconds()
             logger.exception("[%s] Message handling error: %s", qname, e)
+        finally:
+            self.stats.record_time(qname, elapsed, is_success)
+
+            logger.info(
+                "📊 [%s] Pipeline finished: elapsed=%.2fs success=%s",
+                qname, elapsed, is_success,
+            )
+
+            # 50건마다 통계 출력
+            q_stats = self.stats.queue_times.get(qname, {})
+            if q_stats.get("count", 0) % 50 == 0:
+                logger.info(
+                    "📊 [%s] Stats (every 50): %s",
+                    qname, self.stats.get_summary(qname),
+                )
 
     def _build_webhook_payload(
         self,

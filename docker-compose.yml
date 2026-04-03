@@ -1,8 +1,8 @@
 services:
-  docker-watcher:
+  aetem-v2-watcher:
     build: .
-    image: docker-watcher:latest
-    container_name: docker-watcher
+    image: aetem-v2-watcher:latest
+    container_name: aetem-v2-watcher
     restart: unless-stopped
 
     volumes:
@@ -13,7 +13,7 @@ services:
 
     environment:
       - CONFIG_PATH=/config/watcher.yml
-      - LOG_DIR=/app/logs
+      - LOG_DIR=/var/log/aetem/watcher
 
       # PostgreSQL
       - POSTGRES_HOST=10.0.100.130
