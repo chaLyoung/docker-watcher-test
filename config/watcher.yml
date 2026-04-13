@@ -40,17 +40,18 @@ queues:
   - name: B0001
     mode: container
     analysis_type: "B0001"
-    image: "analysis-observation-viewshed"
+    image: "analysis-observation-viewshed:latest"
     timeout: 600
     response_type: "tiff"
-    result_filename: "viewshed.tif" # 산출물: 가시권 래스터
+    result_filename: "visibility_heatmap.tif" # 산출물: 가시권 래스터
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       observerPositions: OBSERVER_POSITIONS # 관측자 좌표 [[x,y],...] (EPSG:5186)
       maxDistance: MAX_DISTANCE
-    env:
-      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
+      gisDataPath: GIS_DATA_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
 
   # B0002 — 사격선분석 (직사)
   # MQ: { callbackUrl, type, requestId, requestDateTime, firePositions, weaponParams }
@@ -58,17 +59,21 @@ queues:
   - name: B0002
     mode: container
     analysis_type: "B0002"
-    image: "analysis-observation-direct"
+    image: "analysis-observation-direct:latest"
     timeout: 600
     response_type: "tiff"
-    result_filename: "direct_fire_viewshed.tif" # 산출물: 사격 가능 영역
+    result_filename: "fire_classified.tif" # 산출물: 사격 가능 영역
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       firePositions: FIRE_POSITIONS # 사격 위치 [[x,y],...] (EPSG:5186)
       weaponParams: WEAPON_PARAMS # [최소사거리,최대사거리,최소부각°,최대앙각°,표적높이m]
-    env:
-      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
+      ballistic: BALLISTIC # [초속m/s,중력m/s²,최소발사각°,최대발사각°]
+      mode: MODE
+      targetPostion: TARGET_POSITION
+      gisDataPath: GIS_DATA_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
 
   # B0003 — 사격선분석 (곡사)
   # MQ: { callbackUrl, type, requestId, requestDateTime, launch, ballistic }
@@ -79,14 +84,15 @@ queues:
     image: "analysis-observation-throwshed:latest"
     timeout: 600
     response_type: "tiff"
-    result_filename: "throwshed_combined_any.tif" # 산출물: 곡사 도달 합집합
+    result_filename: "indirect_fire.tif" # 산출물: 곡사 도달 합집합
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
-      launch: LAUNCH # 발사 위치 [x,y,높이] (EPSG:5186)
+      firePositions: FIRE_POSITIONS # 발사 위치 [x,y,높이] (EPSG:5186)
+      weaponParams: WEAPON_PARAMS # [최소사거리,최대사거리,최소부각°,최대앙각°,표적높이m]
       ballistic: BALLISTIC # [초속m/s,중력m/s²,최소발사각°,최대발사각°]
-    env:
-      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
+      targetPostion: TARGET_POSITION
+      gisDataPath: GIS_DATA_PATH
 
   # B0004 — 접근로분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, targetPoint, profile, retreatAzimuthDeg }
@@ -97,13 +103,14 @@ queues:
     image: "analysis-aoa:latest"
     timeout: 600
     response_type: "shape"
-    result_filename: "routes_{profile}.zip" # 산출물: 접근로 LineString
+    result_filename: "aoa_routes.zip" # 산출물: 접근로 LineString
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
-      targetPoint: TARGET_POINT # 목표점 [x,y] (EPSG:5186)
-      profile: PROFILE # pedestrian/wheeled/tracked
-      retreatAzimuthDeg: RETREAT_AZIMUTH_DEG # 아군 방위각 (선택, °)
+      # profile: PROFILE # pedestrian/wheeled/tracked
+      # retreatAzimuthDeg: RETREAT_AZIMUTH_DEG # 아군 방위각 (선택, °)
+      gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
 
   # B0005 — 핵심지형분석 (HILLTOP)
   # MQ: { callbackUrl, type, requestId, requestDateTime, userPosition, searchPadius }
@@ -111,17 +118,23 @@ queues:
   - name: B0005
     mode: container
     analysis_type: "B0005"
-    image: "analysis-hilltop"
+    image: "analysis-hilltop:latest"
     timeout: 600
     response_type: "shape"
     result_filename: "best_tophill.zip" # 산출물: 최적 봉우리
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       userPosition: USER_POSITION # 사용자 위치 [x,y] (EPSG:5186)
       searchPadius: SEARCH_RADIUS # 탐색 반경 (km) — 명세서 키: searchPadius
-    env:
-      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
+      gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH`
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
 
   # B0006 — 장애지형분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, profile }
@@ -129,22 +142,15 @@ queues:
   - name: B0006
     mode: container
     analysis_type: "B0006"
-    image: "analysis-obstacle"
+    image: "analysis-obstacle:latest"
     timeout: 600
     response_type: "tiff"
-    result_filename: "class_{profile}_barrier.tif" # 산출물: 프로파일별 장벽 분류
+    result_filename: "obstacle_heatmap.tif" # 산출물: 프로파일별 장벽 분류
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
-      profile: PROFILE # pedestrian/wheeled/tracked
-    env:
-      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
-      RC_RASTER_PATH: "/mnt/data/pyeongchang/input/convert_data/runoff_c.tif"
-      CODE_RASTER_PATH: "/mnt/data/pyeongchang/input/convert_data/code_l2_index.tif"
-      FOREST_FRTP_PATH: "/mnt/data/pyeongchang/input/convert_data/veg_valid.tif"
-      FOREST_DNST_PATH: "/mnt/data/pyeongchang/input/convert_data/s_dnst.tif"
-      FOREST_AGCLS_PATH: "/mnt/data/pyeongchang/input/convert_data/s_ag.tif"
-      FOREST_DMCLS_PATH: "/mnt/data/pyeongchang/input/convert_data/s_dm.tif"
+      # profile: PROFILE # pedestrian/wheeled/tracked
+      gisDataPath: GIS_DATA_PATH
 
   # B0007 — 은폐분석
   # MQ: { callbackUrl, type, requestId, requestDateTime }
@@ -152,19 +158,16 @@ queues:
   - name: B0007
     mode: container
     analysis_type: "B0007"
-    image: "analysis-concealment"
+    image: "analysis-concealment:latest"
     timeout: 600
     response_type: "tiff"
-    result_filename: "forest_concealment_index.tif" # 산출물: 은폐 지수 (0~1)
+    result_filename: "concealment_heatmap.tif" # 산출물: 은폐 지수 (0~1)
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
-    env_mapping: {} # 추가 환경변수 없음 (DEM/OUTPUT 자동)
-    env:
-      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
-      FOREST_FRTP_SCORE_PATH: "/mnt/data/pyeongchang/input/convert_data/s_frtp.tif"
-      FOREST_DNST_PATH: "/mnt/data/pyeongchang/input/convert_data/s_dnst.tif"
-      FOREST_AGCLS_PATH: "/mnt/data/pyeongchang/input/convert_data/s_ag.tif"
-      FOREST_DMCLS_PATH: "/mnt/data/pyeongchang/input/convert_data/s_dm.tif"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
+    env_mapping:
+      gisDataPath: GIS_DATA_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
 
   # B0008 — 엄폐분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, enemyPositions, maxDistance }
@@ -175,12 +178,15 @@ queues:
     image: "analysis-cover:latest"
     timeout: 600
     response_type: "tiff"
-    result_filename: "hidden.tif" # 산출물: 엄폐 가능 영역
+    result_filename: "cover_heatmap.tif" # 산출물: 엄폐 가능 영역
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       enemyPositions: ENEMY_POSITIONS # 적 위치 [[x,y,높이],...] (EPSG:5186)
       maxDistance: MAX_DISTANCE # 최대 가시 거리 (m)
+      gisDataPath: GIS_DATA_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
 
   # B0009 — 진출선분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, start, goal }
@@ -191,12 +197,13 @@ queues:
     image: "analysis-movement-timeline:latest"
     timeout: 600
     response_type: "shape"
-    result_filename: "timeline_segments.zip" # 산출물: 구간별 진출선
+    result_filename: "timeline_{profile}.zip" # 산출물: 구간별 진출선
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       start: START # 출발점 [x,y] (EPSG:5186)
       goal: GOAL # 도착점 [x,y] (EPSG:5186)
+      gisDataPath: GIS_DATA_PATH
 
   # B0010 — 이동로분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, start, goal, profile }
@@ -204,20 +211,18 @@ queues:
   - name: B0010
     mode: container
     analysis_type: "B0010"
-    image: "analysis-pathfinding"
+    image: "analysis-pathfinding:latest"
     timeout: 600
     response_type: "shape"
     result_filename: "path_{profile}.zip" # 산출물: 탐색 경로
-    concurrency: 1
+    concurrency: 5
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       start: START # 출발점 [x,y] (EPSG:5186)
       goal: GOAL # 도착점 [x,y] (EPSG:5186)
       profile: PROFILE # pedestrian/wheeled/tracked
-    env:
-      DEM_PATH: "/mnt/data/pyeongchang/input/convert_data/DEM.tif"
-      COSTMAP_DIR: "/mnt/data/pyeongchang/input/costmap"
+      gisDataPath: GIS_DATA_PATH
 
   # ============================================================
   # 전처리 (Container 모드)
@@ -232,13 +237,14 @@ queues:
     response_type: "tiff"
     result_filename: "veg_valid.tif"
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       baseDataDir: BASE_DATA_DIR # 입력 데이터 루트
       clipAreaShp: CLIP_AREA_SHP # 클립 영역 Shapefile
       forestZipFolder: FOREST_ZIP_FOLDER # 임상도 ZIP 폴더
       landcoverZipFolder: LANDCOVER_ZIP_FOLDER # 토지피복도 ZIP 폴더
       steps: STEPS # 실행 단계 (all/forest/landcover/tif)
+      gisDataPath: GIS_DATA_PATH
     env:
       BASE_PATH: /mnt/data/pyeongchang/input/base_data
 
@@ -249,8 +255,24 @@ queues:
     image: "analysis-costmap:latest"
     timeout: 1200
     response_type: "tiff"
-    result_filename: "effective_cost_{profile}_relaxed.tif"
+    result_filename: "cost_tracked.tif"
     volumes:
-      - "/deploy/data/aetem/app/spatial:/mnt/data"
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
-      profile: PROFILE # pedestrian/wheeled/tracked`
+      profile: PROFILE # pedestrian/wheeled/tracked
+      gisDataPath: GIS_DATA_PATH
+
+    # B1003 — 감제고지 생성
+  - name: B1003
+    mode: container
+    analysis_type: "analysis-commanding-heights"
+    image: "analysis-commanding-heights:latest"
+    timeout: 1200
+    response_type: "shape"
+    result_filename: "selected_ops.zip"
+    volumes:
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
+    env_mapping:
+      gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
+      aoaPath: AOA_PATH

@@ -37,8 +37,8 @@ services:
 
       # Data
       - DATA_ROOT_PATH=/deploy/data/aetem/app
-      - SPATIAL_DATA_PATH=/deploy/data/aetem/app/spatial    # 경로만 알려주면 됨
-      - SPATIAL_MOUNT_PATH=/mnt/data
+      - SPATIAL_DATA_PATH=/deploy/data/aetem/app/gis    # 경로만 알려주면 됨
+      - SPATIAL_MOUNT_PATH=/deploy/data/aetem/app/gis
 
     networks:
       - aetem_v2

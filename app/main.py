@@ -18,6 +18,7 @@ import string
 import shortuuid
 
 import gzip
+import psutil
 import shutil
 from logging.handlers import TimedRotatingFileHandler
 
@@ -84,13 +85,11 @@ class Stats:
 
         avg = s["total_sec"] / s["count"]
         times = sorted(s["times"])
-        median = times[len(times) // 2]
         wall_time = (datetime.now() - s["batch_start"]).total_seconds()
 
         return (
             f"count={s['count']} success={s['success']} failed={s['failed']} | "
             f"avg={avg:.1f}s min={s['min_sec']:.1f}s max={s['max_sec']:.1f}s "
-            f"median={median:.1f}s | "
             f"wall_time={wall_time:.1f}s"
         )
 
@@ -234,6 +233,10 @@ class AnalysisConsumer:
         save_path = ""
         elapsed = None
 
+        proc = psutil.Process()
+        proc.cpu_percent()          # 첫 호출: 기준점만 잡음
+        psutil.cpu_percent()        # 시스템도 기준점
+
         try:
             body = json.loads(message.body.decode())
 
@@ -245,6 +248,7 @@ class AnalysisConsumer:
 
             # ── 공통 필드 (모든 큐 공통) ──
             analysis_type = body.get("type", "")
+            geospatial_analysis_type = body.get("geospatialAnalysisType", "")
             callback_url = body.get("callbackUrl", "")
             request_id = body.get("requestId", "")
             request_date_time = body.get("requestDateTime", "")
@@ -268,8 +272,8 @@ class AnalysisConsumer:
 
             # ── 작업 디렉토리 구성 (container 모드용) ──
             yyyymm = datetime.now().strftime("%Y%m")
-            work_dir_host = os.path.join(self.config.spatial_data_path, yyyymm, request_id)
-            work_dir_container = os.path.join(self.config.spatial_mount_path, yyyymm, request_id)
+            work_dir_host = os.path.join(self.config.spatial_data_path, 'result', yyyymm, request_id)
+            # work_dir_container = os.path.join(self.config.spatial_mount_path, 'result', yyyymm, request_id)
 
             # ── 1) DB INSERT ──
             try:
@@ -290,8 +294,8 @@ class AnalysisConsumer:
             try:
                 if self.qcfg.mode == "container":
                     logger.info("[%s] Running container mode: image=%s work_dir=%s",
-                                qname, self.qcfg.image, work_dir_container)
-                    is_success, error_message = await self._run_container(body, request_id, work_dir_container)
+                                qname, self.qcfg.image, work_dir_host)
+                    is_success, error_message = await self._run_container(body, request_id, work_dir_host)
                 else:
                     # Service 모드: 파일 경로 검증
                     opord_path = body.get("opordPath", "").replace("\\", "/")
@@ -330,6 +334,26 @@ class AnalysisConsumer:
                     logger.error("[%s] DB update failed: %s", qname, e)
 
             # ── 4) Webhook 전송 ──
+
+            elapsed = (datetime.now() - msg_start_time).total_seconds()
+
+            # 시스템 리소스 수집 (시작 시점 대비 사용량)
+            sys_cpu = psutil.cpu_percent()        # 시작 이후 CPU 사용률
+            sys_mem = psutil.virtual_memory()
+            proc_cpu = proc.cpu_percent()         # 시작 이후 프로세스 CPU
+            proc_mem = proc.memory_info()
+
+            system_stats = {
+                "cpuCount": psutil.cpu_count(),
+                "cpuPercent": psutil.cpu_percent(interval=None),
+                "memTotalGb": round(sys_mem.total / (1024**3), 1),
+                "memUsedGb": round(sys_mem.used / (1024**3), 1),
+                "memPercent": sys_mem.percent,
+                "watcherCpuPercent": proc.cpu_percent(interval=None),
+                "watcherMemMb": round(proc_mem.rss / (1024**2), 1),
+                "watcherMemPercent": round(proc.memory_percent(), 1),
+            }
+
             if self.qcfg.mode == "service":
                 # Service 모드: 기존 포맷
                 save_path = save_path.replace(self.config.data_root_path, "")
@@ -350,14 +374,15 @@ class AnalysisConsumer:
                     request_user_id=request_user_id,
                     battalion_phase_id=battalion_phase_id,
                     battalion_aspect_id=battalion_aspect_id,
+                    geospatial_analysis_type=geospatial_analysis_type,
                     work_dir_host=work_dir_host,
                     body=body,
                 )
 
-            elapsed = (datetime.now() - msg_start_time).total_seconds()
-
             payload_dict = payload.to_dict()
             payload_dict["processingTime"] = round(elapsed, 2)
+            # payload_dict["systemStats"] = system_stats
+
             logger.info("[%s] Sending webhook: url=%s\n%s", qname, callback_url, json.dumps(payload_dict, indent=2, ensure_ascii=False))
             webhook_result = await self.webhook.send(callback_url, payload_dict)
 
@@ -391,6 +416,7 @@ class AnalysisConsumer:
         request_user_id: Optional[str],
         battalion_phase_id: Optional[str],
         battalion_aspect_id: Optional[str],
+        geospatial_analysis_type: Optional[str],
         work_dir_host: str,
         body: dict,
     ) -> WebhookPayload:
@@ -402,6 +428,8 @@ class AnalysisConsumer:
             requestUserId=request_user_id,
             battalionPhaseId=battalion_phase_id,
             battalionAspectId=battalion_aspect_id,
+            geospatialAnalysisType=geospatial_analysis_type,
+            resultPath=work_dir_host,
         )
 
         if not is_success:
@@ -422,7 +450,7 @@ class AnalysisConsumer:
             payload.gisTiffPath = result_path
             base, ext = os.path.splitext(result_path)
             payload.cogTiffPath = f"{base}_cog{ext}"
-
+        
         return payload
 
     # ── Container 모드 ──────────────────────────────────────
@@ -431,6 +459,8 @@ class AnalysisConsumer:
         """Docker 컨테이너 실행 후 종료 대기 → (성공여부, 에러메시지) 반환"""
         qname = self.qcfg.name
         container_name = f"{qname}-{uuid.uuid4().hex[:8]}"
+        memory_samples = []
+        monitor_task = None
         env_vars = self._build_env_vars(body, work_dir)
 
         container_config = {
@@ -462,21 +492,33 @@ class AnalysisConsumer:
             )
 
             # 출력 디렉토리 미리 생성 (호스트 경로)
-            host_work_dir = work_dir.replace(
-                self.config.spatial_mount_path,
-                self.config.spatial_data_path,
-            )
-            os.makedirs(host_work_dir, exist_ok=True)
-            logger.info("[%s] Output dir created: %s", qname, host_work_dir)
+            # host_work_dir = work_dir.replace(
+            #     self.config.spatial_mount_path,
+            #     self.config.spatial_data_path,
+            # )
+
+            os.makedirs(work_dir, exist_ok=True)
+            logger.info("[%s] Output dir created: %s", qname, work_dir)
 
             start_time = datetime.now()
             await container.start()
-
             logger.info("[%s] Container started: %s", qname, container_name)
+
+            # 메모리 모니터링 시작 (공유 리스트에 수집)
+            monitor_task = asyncio.create_task(
+                self._monitor_container_memory(container, container_name, memory_samples)
+            )
 
             timeout = self.qcfg.timeout or 600
             result = await asyncio.wait_for(container.wait(), timeout=timeout)
             end_time = datetime.now()
+
+            # 모니터링 중지
+            monitor_task.cancel()
+            try:
+                await monitor_task
+            except asyncio.CancelledError:
+                pass
 
             exit_code = result.get("StatusCode", -1)
             elapsed = (end_time - start_time).total_seconds()
@@ -510,7 +552,7 @@ class AnalysisConsumer:
                     profile = body.get("profile", "pedestrian")
                     filename = filename.replace("{profile}", profile)
 
-                result_path = os.path.join(host_work_dir, filename)
+                result_path = os.path.join(work_dir, filename)
 
                 if not os.path.exists(result_path):
                     msg = f"Output file not found: {result_path}"
@@ -539,6 +581,11 @@ class AnalysisConsumer:
                         logger.error("[%s] %s", qname, msg)
                         return False, msg
 
+                # 메모리 사용량 파일 저장
+            if memory_samples:
+                self._save_memory_report(qname, container_name, request_id,
+                                         start_time, end_time, memory_samples, work_dir)
+
             return True, None
 
         except asyncio.TimeoutError:
@@ -552,6 +599,8 @@ class AnalysisConsumer:
             return False, msg
 
         finally:
+            if monitor_task and not monitor_task.done():
+                monitor_task.cancel()
             if container:
                 try:
                     await container.kill()
@@ -567,9 +616,8 @@ class AnalysisConsumer:
         """메시지 본문 + 작업 디렉토리에서 컨테이너 환경변수 생성"""
         env = {}
 
-        # 1) 작업 디렉토리 기반 기본값 (DEM_PATH, OUTPUT_PATH)
+        # 1) 작업 디렉토리 기반 기본값 (OUTPUT_PATH)
         env["OUTPUT_PATH"] = work_dir
-        env["DEM_PATH"] = os.path.join(work_dir, "DEM.tif")
 
         # 3) 큐별 고정 환경변수 (watcher.yml env)       ← 이 부분 추가
         env.update(self.qcfg.env)
@@ -581,8 +629,11 @@ class AnalysisConsumer:
             if value is not None:
                 env[env_name] = str(value)
 
+        # 임시코드 사격선 MODE
+        if self.qcfg.analysis_type == 'b0002':
+            env["MODE"] = 'ocoka'
+
         # 3) 시스템 환경변수
-        env["DATA_ROOT_PATH"] = self.config.data_root_path
         env["ANALYSIS_TYPE"] = self.qcfg.analysis_type
 
         return env
@@ -624,6 +675,68 @@ class AnalysisConsumer:
             msg = f"Service call failed: {e}"
             logger.error("[%s] %s", qname, msg)
             return False, msg
+
+
+    async def _monitor_container_memory(self, container, container_name: str,
+                                         samples: list, interval: float = 1.0):
+        """컨테이너 메모리 사용량 주기적 수집 (samples 리스트에 직접 추가)"""
+        try:
+            while True:
+                stats = await container.stats(stream=False)
+                if stats:
+                    stat = stats[0] if isinstance(stats, list) else stats
+                    mem_usage = stat.get("memory_stats", {}).get("usage", 0)
+                    mem_limit = stat.get("memory_stats", {}).get("limit", 0)
+                    samples.append({
+                        "timestamp": datetime.now().strftime("%H:%M:%S.%f")[:-3],
+                        "usage_mb": round(mem_usage / 1024 / 1024, 1),
+                        "limit_mb": round(mem_limit / 1024 / 1024, 1),
+                        "percent": round(mem_usage / mem_limit * 100, 2) if mem_limit > 0 else 0,
+                    })
+                await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
+
+
+    def _save_memory_report(self, qname: str, container_name: str, request_id: str,
+                            start_time: datetime, end_time: datetime,
+                            samples: list, work_dir: str):
+        if not samples:
+            return
+
+        usage_list = [s["usage_mb"] for s in samples]
+        report = {
+            "queue": qname,
+            "container": container_name,
+            "requestId": request_id,
+            "start_time": start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "elapsed_s": round((end_time - start_time).total_seconds(), 2),
+            "samples_count": len(samples),
+            "memory_mb": {
+                "avg": round(sum(usage_list) / len(usage_list), 1),
+                "min": round(min(usage_list), 1),
+                "max": round(max(usage_list), 1),
+                "limit": samples[0]["limit_mb"],
+            },
+            "samples": samples,
+        }
+
+        # /var/log/aetem/watcher/memory/B0006/AcTdr0ktD7O1_20260403_065700.json
+        mem_dir = os.path.join("/var/log/aetem/watcher", "memory", qname)
+
+        os.makedirs(mem_dir, exist_ok=True)
+        filename = f"{request_id}_{start_time.strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = os.path.join(mem_dir, filename)
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+
+        logger.info("[%s] Memory report saved: %s/%s (avg=%.1fMB max=%.1fMB)",
+                    qname, qname, filename, report["memory_mb"]["avg"], report["memory_mb"]["max"])
+
 
     # ── Lifecycle ───────────────────────────────────────────
 

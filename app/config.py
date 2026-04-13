@@ -50,8 +50,8 @@ class WebhookPayload:
     """Webhook 전송 페이로드
 
     - service 모드: success, message, requestId, situationId, brigadePhaseId, preproccessingPath
-    - container 모드 (tiff): success, message, requestId, gisTiffPath, cogTiffPath
-    - container 모드 (shape): success, message, requestId, shapePath
+    - container 모드 (tiff): success, message, requestId, gisTiffPath, cogTiffPath, resultPath
+    - container 모드 (shape): success, message, requestId, shapePath, resultPath
     """
     success: bool = True
     message: Optional[str] = None
@@ -64,9 +64,11 @@ class WebhookPayload:
     gisTiffPath: Optional[str] = None
     cogTiffPath: Optional[str] = None
     shapePath: Optional[str] = None
+    resultPath: Optional[str] = None
     requestUserId: Optional[str] = None
     battalionPhaseId: Optional[str] = None
     battalionAspectId: Optional[str] = None
+    geospatialAnalysisType: Optional[str] = None
 
     def to_dict(self) -> dict:
         """None 필드 제외하고 dict 변환"""
@@ -115,8 +117,8 @@ class Config:
     queues: List[QueueConfig] = field(default_factory=list)
     log_dir: str = "/app/logs"
     data_root_path: str = "/deploy/data/aetem/app"
-    spatial_data_path: str = "/deploy/data/aetem/app/spatial"
-    spatial_mount_path: str = "/mnt/data"
+    spatial_data_path: str = "/deploy/data/aetem/app/gis"
+    spatial_mount_path: str = "/deploy/data/aetem/app/gis"
 
     @classmethod
     def load(cls) -> "Config":
@@ -163,8 +165,8 @@ class Config:
             queues=queues,
             log_dir=os.getenv("LOG_DIR", "/app/logs"),
             data_root_path=os.getenv("DATA_ROOT_PATH", "/deploy/data/aetem/app"),
-            spatial_data_path=os.getenv("SPATIAL_DATA_PATH", "/deploy/data/aetem/app/spatial"),
-            spatial_mount_path=os.getenv("SPATIAL_MOUNT_PATH", "/mnt/data"),
+            spatial_data_path=os.getenv("SPATIAL_DATA_PATH", "/deploy/data/aetem/app/gis"),
+            spatial_mount_path=os.getenv("SPATIAL_MOUNT_PATH", "/deploy/data/aetem/app/gis"),
         )
 
 
