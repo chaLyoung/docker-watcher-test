@@ -258,6 +258,9 @@ class AnalysisConsumer:
             request_user_id = body.get("requestUserId")
             battalion_phase_id = body.get("battalionPhaseId")
             battalion_aspect_id = body.get("battalionAspectId")
+            event_propagation = body.get("eventPropagation")
+            event_type_name = body.get("eventTypeName")
+            analysis_pipeline = body.get("analysisPipeline")
 
             if not request_id:
                 alphabet = string.ascii_lowercase + string.digits
@@ -374,6 +377,9 @@ class AnalysisConsumer:
                     request_user_id=request_user_id,
                     battalion_phase_id=battalion_phase_id,
                     battalion_aspect_id=battalion_aspect_id,
+                    event_propagation=event_propagation,
+                    event_type_name=event_type_name,
+                    analysis_pipeline=analysis_pipeline,
                     geospatial_analysis_type=geospatial_analysis_type,
                     work_dir_host=work_dir_host,
                     body=body,
@@ -416,6 +422,9 @@ class AnalysisConsumer:
         request_user_id: Optional[str],
         battalion_phase_id: Optional[str],
         battalion_aspect_id: Optional[str],
+        event_propagation: Optional[str],
+        event_type_name: Optional[str],
+        analysis_pipeline: Optional[str],
         geospatial_analysis_type: Optional[str],
         work_dir_host: str,
         body: dict,
@@ -428,6 +437,9 @@ class AnalysisConsumer:
             requestUserId=request_user_id,
             battalionPhaseId=battalion_phase_id,
             battalionAspectId=battalion_aspect_id,
+            eventPropagation=event_propagation,
+            eventTypeName=event_type_name,
+            analysisPipeline=analysis_pipeline,
             geospatialAnalysisType=geospatial_analysis_type,
             resultPath=work_dir_host,
         )
@@ -438,7 +450,7 @@ class AnalysisConsumer:
         # result_filename에 {profile} 등 치환
         filename = self.qcfg.result_filename
         if "{profile}" in filename:
-            profile = body.get("profile", "pedestrian")
+            profile = body.get("profile", "tracked")
             filename = filename.replace("{profile}", profile)
 
         result_path = os.path.join(work_dir_host, filename)
@@ -549,7 +561,7 @@ class AnalysisConsumer:
             if self.qcfg.result_filename:
                 filename = self.qcfg.result_filename
                 if "{profile}" in filename:
-                    profile = body.get("profile", "pedestrian")
+                    profile = body.get("profile", "tracked")
                     filename = filename.replace("{profile}", profile)
 
                 result_path = os.path.join(work_dir, filename)

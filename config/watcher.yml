@@ -13,7 +13,7 @@ watch:
     - analysis-pathfinding:latest
     - analysis-aoa:latest
     - analysis-movement-timeline:latest
-    - analysis-hilltop:latest
+    - analysis-keyterrain:latest
 
 events:
   include_actions:
@@ -50,8 +50,13 @@ queues:
       observerPositions: OBSERVER_POSITIONS # 관측자 좌표 [[x,y],...] (EPSG:5186)
       maxDistance: MAX_DISTANCE
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
       aoaPath: AOA_PATH
       commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
 
   # B0002 — 사격선분석 (직사)
   # MQ: { callbackUrl, type, requestId, requestDateTime, firePositions, weaponParams }
@@ -72,8 +77,13 @@ queues:
       mode: MODE
       targetPostion: TARGET_POSITION
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
       aoaPath: AOA_PATH
       commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
 
   # B0003 — 사격선분석 (곡사)
   # MQ: { callbackUrl, type, requestId, requestDateTime, launch, ballistic }
@@ -93,6 +103,13 @@ queues:
       ballistic: BALLISTIC # [초속m/s,중력m/s²,최소발사각°,최대발사각°]
       targetPostion: TARGET_POSITION
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
 
   # B0004 — 접근로분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, targetPoint, profile, retreatAzimuthDeg }
@@ -111,24 +128,30 @@ queues:
       # retreatAzimuthDeg: RETREAT_AZIMUTH_DEG # 아군 방위각 (선택, °)
       gisDataPath: GIS_DATA_PATH
       obstaclePath: OBSTACLE_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
 
-  # B0005 — 핵심지형분석 (HILLTOP)
+  # B0005 — 핵심지형분석 (KEYTERRAIN)
   # MQ: { callbackUrl, type, requestId, requestDateTime, userPosition, searchPadius }
   # 응답: { success, message, requestId, shapePath }
   - name: B0005
     mode: container
     analysis_type: "B0005"
-    image: "analysis-hilltop:latest"
+    image: "analysis-keyterrain:latest"
     timeout: 600
     response_type: "shape"
-    result_filename: "best_tophill.zip" # 산출물: 최적 봉우리
+    result_filename: "key_terrain.zip" # 산출물: 최적 봉우리
     volumes:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       userPosition: USER_POSITION # 사용자 위치 [x,y] (EPSG:5186)
       searchPadius: SEARCH_RADIUS # 탐색 반경 (km) — 명세서 키: searchPadius
       gisDataPath: GIS_DATA_PATH
-      obstaclePath: OBSTACLE_PATH`
+      obstaclePath: OBSTACLE_PATH
       aoaPath: AOA_PATH
       commandingHeightPath: COMMANDING_HEIGHTS_PATH
       observationViewshedPath: OBSERVATION_VIEWSHED_PATH
@@ -151,6 +174,13 @@ queues:
     env_mapping:
       # profile: PROFILE # pedestrian/wheeled/tracked
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
 
   # B0007 — 은폐분석
   # MQ: { callbackUrl, type, requestId, requestDateTime }
@@ -166,8 +196,13 @@ queues:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
       aoaPath: AOA_PATH
       commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
 
   # B0008 — 엄폐분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, enemyPositions, maxDistance }
@@ -185,8 +220,13 @@ queues:
       enemyPositions: ENEMY_POSITIONS # 적 위치 [[x,y,높이],...] (EPSG:5186)
       maxDistance: MAX_DISTANCE # 최대 가시 거리 (m)
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
       aoaPath: AOA_PATH
       commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
 
   # B0009 — 진출선분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, start, goal }
@@ -202,8 +242,16 @@ queues:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       start: START # 출발점 [x,y] (EPSG:5186)
-      goal: GOAL # 도착점 [x,y] (EPSG:5186)
+      end: END # 도착점 [x,y] (EPSG:5186)
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
+      pathfindingPath: PATHFINDING_PATH
 
   # B0010 — 이동로분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, start, goal, profile }
@@ -220,9 +268,17 @@ queues:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       start: START # 출발점 [x,y] (EPSG:5186)
-      goal: GOAL # 도착점 [x,y] (EPSG:5186)
+      end: END # 도착점 [x,y] (EPSG:5186)
       profile: PROFILE # pedestrian/wheeled/tracked
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
+      costmapPath: COSTMAP_PATH
 
   # ============================================================
   # 전처리 (Container 모드)
@@ -245,6 +301,13 @@ queues:
       landcoverZipFolder: LANDCOVER_ZIP_FOLDER # 토지피복도 ZIP 폴더
       steps: STEPS # 실행 단계 (all/forest/landcover/tif)
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
     env:
       BASE_PATH: /mnt/data/pyeongchang/input/base_data
 
@@ -261,6 +324,14 @@ queues:
     env_mapping:
       profile: PROFILE # pedestrian/wheeled/tracked
       gisDataPath: GIS_DATA_PATH
+      obstaclePath: OBSTACLE_PATH
+      aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH
+      pathfindingPath: PATHFINDING_PATH
 
     # B1003 — 감제고지 생성
   - name: B1003
@@ -276,3 +347,8 @@ queues:
       gisDataPath: GIS_DATA_PATH
       obstaclePath: OBSTACLE_PATH
       aoaPath: AOA_PATH
+      commandingHeightPath: COMMANDING_HEIGHTS_PATH
+      observationViewshedPath: OBSERVATION_VIEWSHED_PATH
+      observationDirectPath: OBSERVATION_DIRECT_PATH
+      concealmentPath: CONCEALMENT_PATH
+      coverPath: COVER_PATH

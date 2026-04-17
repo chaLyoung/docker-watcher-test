@@ -69,6 +69,9 @@ class WebhookPayload:
     battalionPhaseId: Optional[str] = None
     battalionAspectId: Optional[str] = None
     geospatialAnalysisType: Optional[str] = None
+    eventPropagation: Optional[str] = None
+    eventTypeName: Optional[str] = None
+    analysisPipeline: Optional[str] = None
 
     def to_dict(self) -> dict:
         """None 필드 제외하고 dict 변환"""
