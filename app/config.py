@@ -55,6 +55,7 @@ class WebhookPayload:
     """
     success: bool = True
     message: Optional[str] = None
+    failCode: Optional[str] = None
     requestId: Optional[str] = None
     # service 모드용
     situationId: Optional[str] = None
@@ -104,6 +105,7 @@ class QueueConfig:
     service_url: str = ""                               # service 모드: 요청 URL
     env_mapping: dict = field(default_factory=dict)
     response_type: str = "tiff"                         # 응답 타입: "tiff" | "shape"
+    result_filename_map: dict = field(default_factory=dict)
     result_filename: str = ""                           # 산출물 파일명 (e.g. "viewshed.tif")
     env: dict = field(default_factory=dict)             # 고정 환경변수
     timeout: int = 600
@@ -188,6 +190,7 @@ def _parse_queues(raw: list) -> List[QueueConfig]:
             env_mapping=item.get("env_mapping", {}),
             response_type=item.get("response_type", "tiff"),
             result_filename=item.get("result_filename", ""),
+            result_filename_map=item.get("result_filename_map", {}),
             timeout=item.get("timeout", 600),
             env=item.get("env", {}),
             concurrency=item.get("concurrency", 1),

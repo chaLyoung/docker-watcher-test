@@ -230,6 +230,7 @@ class AnalysisConsumer:
         seq = None
         is_success = True
         error_message = None
+        error_code = None
         save_path = ""
         elapsed = None
 
@@ -298,7 +299,7 @@ class AnalysisConsumer:
                 if self.qcfg.mode == "container":
                     logger.info("[%s] Running container mode: image=%s work_dir=%s",
                                 qname, self.qcfg.image, work_dir_host)
-                    is_success, error_message = await self._run_container(body, request_id, work_dir_host)
+                    is_success, error_message, error_code = await self._run_container(body, request_id, work_dir_host)  # 수정
                 else:
                     # Service 모드: 파일 경로 검증
                     opord_path = body.get("opordPath", "").replace("\\", "/")
@@ -320,6 +321,7 @@ class AnalysisConsumer:
             except Exception as e:
                 is_success = False
                 error_message = f"Analysis error: {e}"
+                error_code = "W999"  # Watcher 일반 에러
                 logger.exception("[%s] %s", qname, error_message)
 
             if is_success:
@@ -373,6 +375,7 @@ class AnalysisConsumer:
                 payload = self._build_webhook_payload(
                     is_success=is_success,
                     error_message=error_message,
+                    error_code=error_code,
                     request_id=request_id,
                     request_user_id=request_user_id,
                     battalion_phase_id=battalion_phase_id,
@@ -418,6 +421,7 @@ class AnalysisConsumer:
         self,
         is_success: bool,
         error_message: Optional[str],
+        error_code: Optional[str],
         request_id: str,
         request_user_id: Optional[str],
         battalion_phase_id: Optional[str],
@@ -433,6 +437,7 @@ class AnalysisConsumer:
         payload = WebhookPayload(
             success=is_success,
             message=error_message,
+            failCode=error_code if not is_success else None,
             requestId=request_id,
             requestUserId=request_user_id,
             battalionPhaseId=battalion_phase_id,
@@ -447,11 +452,8 @@ class AnalysisConsumer:
         if not is_success:
             return payload
 
-        # result_filename에 {profile} 등 치환
-        filename = self.qcfg.result_filename
-        if "{profile}" in filename:
-            profile = body.get("profile", "tracked")
-            filename = filename.replace("{profile}", profile)
+        # result_filename 결정 (mode 기반 매핑 우선)
+        filename = self._get_result_filename(body)
 
         result_path = os.path.join(work_dir_host, filename)
 
@@ -465,10 +467,33 @@ class AnalysisConsumer:
         
         return payload
 
-    # ── Container 모드 ──────────────────────────────────────
 
-    async def _run_container(self, body: dict, request_id: str, work_dir: str) -> tuple[bool, Optional[str]]:
-        """Docker 컨테이너 실행 후 종료 대기 → (성공여부, 에러메시지) 반환"""
+    def _get_result_filename(self, body: dict) -> str:
+        """mode에 따른 result_filename 결정"""
+        filename = self.qcfg.result_filename
+        
+        # mode 기반 매핑이 있으면 우선 사용
+        if self.qcfg.result_filename_map:
+            mode = body.get("mode", "")
+            if mode in self.qcfg.result_filename_map:
+                filename = self.qcfg.result_filename_map[mode]
+                logger.info("[%s] result_filename by mode=%s: %s", self.qcfg.name, mode, filename)
+            elif not filename:
+                # mode가 없거나 매핑에 없으면 첫 번째 값을 기본값으로 사용
+                filename = list(self.qcfg.result_filename_map.values())[0]
+                logger.warning("[%s] mode=%s not in map, using default: %s", self.qcfg.name, mode, filename)
+        
+        # {profile} 치환
+        if "{profile}" in filename:
+            profile = body.get("profile", "tracked")
+            filename = filename.replace("{profile}", profile)
+        
+        return filename
+
+
+    # ── Container 모드 ──────────────────────────────────────
+    async def _run_container(self, body: dict, request_id: str, work_dir: str) -> tuple[bool, Optional[str], Optional[str]]:
+        """Docker 컨테이너 실행 후 종료 대기 → (성공여부, 에러메시지, 에러코드) 반환"""
         qname = self.qcfg.name
         container_name = f"{qname}-{uuid.uuid4().hex[:8]}"
         memory_samples = []
@@ -492,7 +517,11 @@ class AnalysisConsumer:
             for bind in self.qcfg.volumes:
                 docker_cmd_lines.append(f"  -v {bind} \\")
             for k, v in env_vars.items():
-                docker_cmd_lines.append(f"  -e {k}={v} \\")
+                # 특수문자가 있으면 따옴표로 감싸기
+                if any(c in str(v) for c in ['[', ']', ' ', ',', '"', "'"]):
+                    docker_cmd_lines.append(f"  -e {k}='{v}' \\")
+                else:
+                    docker_cmd_lines.append(f"  -e {k}={v} \\")
             if self.qcfg.network:
                 docker_cmd_lines.append(f"  --network {self.qcfg.network} \\")
             docker_cmd_lines.append(f"  --name {container_name} \\")
@@ -503,12 +532,6 @@ class AnalysisConsumer:
                 config=container_config, name=container_name,
             )
 
-            # 출력 디렉토리 미리 생성 (호스트 경로)
-            # host_work_dir = work_dir.replace(
-            #     self.config.spatial_mount_path,
-            #     self.config.spatial_data_path,
-            # )
-
             os.makedirs(work_dir, exist_ok=True)
             logger.info("[%s] Output dir created: %s", qname, work_dir)
 
@@ -516,7 +539,7 @@ class AnalysisConsumer:
             await container.start()
             logger.info("[%s] Container started: %s", qname, container_name)
 
-            # 메모리 모니터링 시작 (공유 리스트에 수집)
+            # 메모리 모니터링 시작
             monitor_task = asyncio.create_task(
                 self._monitor_container_memory(container, container_name, memory_samples)
             )
@@ -542,73 +565,77 @@ class AnalysisConsumer:
                 end_time.strftime("%H:%M:%S.%f")[:-3],
             )
 
+            # 컨테이너 로그 수집 (성공/실패 관계없이)
+            container_logs = ""
+            try:
+                logs = await container.log(stdout=True, stderr=True)
+                container_logs = "".join(logs).strip()
+            except Exception as e:
+                logger.warning("[%s] Failed to collect container logs: %s", qname, e)
+
             # 1) 컨테이너 종료 코드 확인
             if exit_code != 0:
-                # 컨테이너 에러 로그 수집
-                try:
-                    logs = await container.log(stdout=True, stderr=True)
-                    container_logs = "".join(logs).strip()
-                    if container_logs:
-                        logger.error("❌[%s] Container logs (%s):\n%s", qname, container_name, container_logs[-2000:])
-                except Exception:
-                    pass
-                    
+                if container_logs:
+                    logger.error("❌[%s] Container logs (%s):\n%s", qname, container_name, container_logs[-2000:])
                 msg = f"Container exited with code {exit_code}"
                 logger.error("[%s] %s", qname, msg)
-                return False, msg
+                return False, msg, "D001"  # Docker exit code 에러
 
-            # 2) 산출물 파일 존재 확인
-            if self.qcfg.result_filename:
-                filename = self.qcfg.result_filename
-                if "{profile}" in filename:
-                    profile = body.get("profile", "tracked")
-                    filename = filename.replace("{profile}", profile)
+            # 2) 로그에서 에러 패턴 감지 (exit_code가 0이어도 실패일 수 있음)
+            error_msg, error_code = self._detect_error_from_logs(container_logs)
+            if error_msg:
+                logger.warning("[%s] Error detected in logs: %s (code=%s)", qname, error_msg, error_code)
+                logger.info("[%s] Container logs:\n%s", qname, container_logs[-2000:])
+                return False, error_msg, error_code
+
+            # 3) 산출물 파일 존재 확인
+            if self.qcfg.result_filename or self.qcfg.result_filename_map:
+                filename = self._get_result_filename(body)
 
                 result_path = os.path.join(work_dir, filename)
 
                 if not os.path.exists(result_path):
                     msg = f"Output file not found: {result_path}"
                     logger.error("[%s] %s", qname, msg)
-                    return False, msg
+                    return False, msg, "W001"  # Watcher: Output file not found
 
                 logger.info("[%s] Output verified: %s", qname, result_path)
 
-                # 2) tiff 타입이면 COG 변환
+                # tiff 타입이면 COG 변환
                 if self.qcfg.response_type == "tiff":
                     try:
                         base, ext = os.path.splitext(result_path)
                         cog_path = f"{base}_cog{ext}"
                         convert_tif_to_cog(result_path, cog_path)
 
-                        # COG 파일 존재 확인
                         if not os.path.exists(cog_path):
                             msg = f"COG file not created: {cog_path}"
                             logger.error("[%s] %s", qname, msg)
-                            return False, msg
+                            return False, msg, "W003"  # Watcher: COG file not created
 
                         logger.info("[%s] COG verified: %s", qname, cog_path)
 
                     except Exception as e:
                         msg = f"COG conversion failed: {e}"
                         logger.error("[%s] %s", qname, msg)
-                        return False, msg
+                        return False, msg, "W002"  # Watcher: COG conversion failed
 
-                # 메모리 사용량 파일 저장
+            # 메모리 사용량 파일 저장
             if memory_samples:
                 self._save_memory_report(qname, container_name, request_id,
-                                         start_time, end_time, memory_samples, work_dir)
+                                        start_time, end_time, memory_samples, work_dir)
 
-            return True, None
+            return True, None, None  # 성공
 
         except asyncio.TimeoutError:
             msg = f"Container timeout after {timeout}s: {container_name}"
             logger.error("[%s] %s", qname, msg)
-            return False, msg
+            return False, msg, "D002"  # Docker timeout
 
         except Exception as e:
             msg = f"Container error: {e}"
             logger.error("[%s] %s: name=%s", qname, msg, container_name)
-            return False, msg
+            return False, msg, "D003"  # Docker 기타 에러
 
         finally:
             if monitor_task and not monitor_task.done():
@@ -689,6 +716,32 @@ class AnalysisConsumer:
             return False, msg
 
 
+    def _detect_error_from_logs(self, logs: str) -> tuple[Optional[str], Optional[str]]:
+        """컨테이너 로그에서 에러 패턴을 감지하여 (에러메시지, 에러코드) 반환"""
+        if not logs:
+            return None, None
+
+        # 에러 패턴 정의 (패턴: (메시지, 코드))
+        error_patterns = {
+            "path_not_found": ("경로를 찾을 수 없습니다 (Path not found)", "L001"),
+            "Path not found": ("경로를 찾을 수 없습니다 (Path not found)", "L001"),
+            "경로를 찾을 수 없음": ("경로를 찾을 수 없습니다 (Path not found)", "L001"),
+            "경로 탐색 실패": ("경로 탐색에 실패했습니다", "L001"),
+            "MemoryError": ("메모리 부족 오류", "L002"),
+            "OutOfMemoryError": ("메모리 부족 오류", "L002"),
+            "CUDA out of memory": ("GPU 메모리 부족", "L002"),
+            "FileNotFoundError": ("파일을 찾을 수 없습니다", "L003"),
+            "No such file or directory": ("파일 또는 디렉토리를 찾을 수 없습니다", "L003"),
+            "Permission denied": ("권한이 거부되었습니다", "L004"),
+        }
+
+        for pattern, (message, code) in error_patterns.items():
+            if pattern in logs:
+                return message, code
+
+        return None, None
+
+
     async def _monitor_container_memory(self, container, container_name: str,
                                          samples: list, interval: float = 1.0):
         """컨테이너 메모리 사용량 주기적 수집 (samples 리스트에 직접 추가)"""
@@ -751,7 +804,6 @@ class AnalysisConsumer:
 
 
     # ── Lifecycle ───────────────────────────────────────────
-
     def shutdown(self):
         self._shutdown.set()
 

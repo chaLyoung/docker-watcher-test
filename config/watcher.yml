@@ -67,7 +67,11 @@ queues:
     image: "analysis-observation-direct:latest"
     timeout: 600
     response_type: "tiff"
-    result_filename: "fire_classified.tif" # 산출물: 사격 가능 영역
+    result_filename: "direct_fire.tif"
+    result_filename_map:
+      ocoka: "fire_classified.tif"
+      fire: "direct_fire.tif"
+      bctp: "direct_fire.tif"
     volumes:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
@@ -94,7 +98,10 @@ queues:
     image: "analysis-observation-throwshed:latest"
     timeout: 600
     response_type: "tiff"
-    result_filename: "indirect_fire.tif" # 산출물: 곡사 도달 합집합
+    result_filename: "indirect_fire.tif"
+    result_filename_map:
+      fire: "indirect_fire.tif"
+      bctp: "indirect_fire.tif"
     volumes:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
@@ -104,6 +111,7 @@ queues:
       targetPostion: TARGET_POSITION
       gisDataPath: GIS_DATA_PATH
       obstaclePath: OBSTACLE_PATH
+      mode: MODE
       aoaPath: AOA_PATH
       commandingHeightPath: COMMANDING_HEIGHTS_PATH
       observationViewshedPath: OBSERVATION_VIEWSHED_PATH
@@ -242,7 +250,7 @@ queues:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       start: START # 출발점 [x,y] (EPSG:5186)
-      end: END # 도착점 [x,y] (EPSG:5186)
+      goal: GOAL # 도착점 [x,y] (EPSG:5186)
       gisDataPath: GIS_DATA_PATH
       obstaclePath: OBSTACLE_PATH
       aoaPath: AOA_PATH
@@ -268,7 +276,7 @@ queues:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
       start: START # 출발점 [x,y] (EPSG:5186)
-      end: END # 도착점 [x,y] (EPSG:5186)
+      goal: GOAL # 도착점 [x,y] (EPSG:5186)
       profile: PROFILE # pedestrian/wheeled/tracked
       gisDataPath: GIS_DATA_PATH
       obstaclePath: OBSTACLE_PATH
