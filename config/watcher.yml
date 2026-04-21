@@ -71,7 +71,7 @@ queues:
     result_filename_map:
       ocoka: "fire_classified.tif"
       fire: "direct_fire.tif"
-      bctp: "direct_fire.tif"
+      bctp: "bctp_result.json"
     volumes:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
@@ -101,7 +101,7 @@ queues:
     result_filename: "indirect_fire.tif"
     result_filename_map:
       fire: "indirect_fire.tif"
-      bctp: "indirect_fire.tif"
+      bctp: "bctp_result.json"
     volumes:
       - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
     env_mapping:
