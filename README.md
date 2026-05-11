@@ -207,8 +207,8 @@ MQ 메시지 수신
 | B1001 | 데이터 변환 | analysis-convert-data | 1800s | veg_valid.tif |
 | B1002 | 비용맵 생성 | analysis-costmap | 1200s | cost_tracked.tif |
 | B1003 | 감제고지 | analysis-commanding-heights | 1200s | selected_ops.zip |
-| B1004 | LAS→3DTiles | analysis-convert-las | 1800s | tileset.json |
-| B1005 | DEM→Terrain | analysis-convert-dem | 3600s | layer.json |
+| B1005 | LAS→3DTiles | analysis-convert-las | 1800s | tileset.json |
+| B1006 | DEM→Terrain | analysis-convert-dem | 3600s | layer.json |
 
 ---
 
