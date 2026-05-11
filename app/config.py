@@ -49,7 +49,7 @@ class WebhookConfig:
 class WebhookPayload:
     """Webhook 전송 페이로드
 
-    - service 모드: success, message, requestId, situationId, brigadePhaseId, preproccessingPath
+    - service 모드: success, message, requestId, situationId, brigadePhaseId, preproccessingPath, responseData
     - container 모드 (tiff): success, message, requestId, gisTiffPath, cogTiffPath, resultPath
     - container 모드 (shape): success, message, requestId, shapePath, resultPath
     """
@@ -61,6 +61,7 @@ class WebhookPayload:
     situationId: Optional[str] = None
     brigadePhaseId: Optional[str] = None
     preproccessingPath: Optional[str] = None
+    responseData: Optional[dict] = None
     # container 모드용
     gisTiffPath: Optional[str] = None
     cogTiffPath: Optional[str] = None

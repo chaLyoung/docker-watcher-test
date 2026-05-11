@@ -34,6 +34,11 @@ queues:
     mode: service
     service_url: http://opord-preprocess:8100/summarizer
 
+  - name: A0004
+    analysis_type: fire-assignment
+    mode: service
+    service_url: http://opord-preprocess:8100/test
+
   # B0001 — 가시권분석
   # MQ: { callbackUrl, type, requestId, requestDateTime, observerPositions }
   # 응답: { success, message, requestId, gisTiffPath, cogTiffPath }
@@ -341,7 +346,7 @@ queues:
       coverPath: COVER_PATH
       pathfindingPath: PATHFINDING_PATH
 
-    # B1003 — 감제고지 생성
+  # B1003 — 감제고지 생성
   - name: B1003
     mode: container
     analysis_type: "analysis-commanding-heights"
@@ -360,3 +365,31 @@ queues:
       observationDirectPath: OBSERVATION_DIRECT_PATH
       concealmentPath: CONCEALMENT_PATH
       coverPath: COVER_PATH
+
+  # B1004 — LAS → 3D Tiles 변환
+  - name: B1005
+    mode: container
+    analysis_type: "analysis-convert-las"
+    image: "analysis-convert-las:latest"
+    timeout: 1800
+    response_type: "shape"
+    result_filename: "tileset.json"
+    volumes:
+      - "/deploy/data/aetem/app/spatial:/mnt/data"
+    env_mapping:
+      lasPath: LAS_PATH          # LAS 파일 경로 (e.g. /mnt/data/las/colored.las)
+      srsOut: SRS_OUT                # 출력 좌표계 (e.g. EPSG:4978)
+      srsIn: SRS_IN                  # 입력 좌표계 (선택)
+
+  # B1005 — DEM → Terrain Tiles 변환
+  - name: B1006
+    mode: container
+    analysis_type: "analysis-convert-dem"
+    image: "analysis-convert-dem:latest"
+    timeout: 3600
+    response_type: "shape"
+    result_filename: "layer.json"
+    volumes:
+      - "/deploy/data/aetem/app/gis:/deploy/data/aetem/app/gis"
+    env_mapping:
+      demPath: DEM_PATH

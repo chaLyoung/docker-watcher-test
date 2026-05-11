@@ -262,6 +262,7 @@ class AnalysisConsumer:
             event_propagation = body.get("eventPropagation")
             event_type_name = body.get("eventTypeName")
             analysis_pipeline = body.get("analysisPipeline")
+            response_data = None
 
             if not request_id:
                 alphabet = string.ascii_lowercase + string.digits
@@ -317,7 +318,9 @@ class AnalysisConsumer:
                         logger.warning("[%s] %s", qname, error_message)
                     else:
                         logger.info("[%s] File verified: %s", qname, full_path)
-                        is_success, error_message = await self._call_service(full_path, request_id, save_path)
+                        is_success, error_message, response_data = await self._call_service(
+                            full_path, request_id, save_path, body
+                        )
             except Exception as e:
                 is_success = False
                 error_message = f"Analysis error: {e}"
@@ -369,6 +372,7 @@ class AnalysisConsumer:
                     situationId=body.get("situationId", ""),
                     brigadePhaseId=body.get("brigadePhaseId", ""),
                     preproccessingPath=os.path.join(save_path, "json", "result.json"),
+                    responseData=response_data,
                 )
             else:
                 # Container 모드: API 명세서 포맷 (tiff/shape)
@@ -679,7 +683,8 @@ class AnalysisConsumer:
 
     # ── Service 모드 ────────────────────────────────────────
 
-    async def _call_service(self, full_path: str, request_id: str, save_path: str) -> tuple[bool, Optional[str]]:
+    async def _call_service(self, full_path: str, request_id: str, save_path: str,
+                            body: dict = None) -> tuple[bool, Optional[str], Optional[dict]]:
         """HTTP 서비스 호출 → (성공여부, 에러메시지) 반환"""
         qname = self.qcfg.name
         url = self.qcfg.service_url
@@ -687,11 +692,17 @@ class AnalysisConsumer:
         try:
             logger.info("[%s] Calling service: %s", qname, url)
 
-            payload = {
-                "request_id": request_id,
-                "input_path": full_path,
-                "output_path": save_path,
-            }
+            if body and body.get("requestData"):
+                payload = body["requestData"]
+            else:
+                payload = {
+                    "request_id": request_id,
+                    "input_path": full_path,
+                    "output_path": save_path,
+                }
+            
+            logger.info("[%s] Service payload:\n%s", qname, json.dumps(payload, indent=2, ensure_ascii=False))
+
             start_time = datetime.now()
             response = await self._http.post(url, json=payload)
             end_time = datetime.now()
@@ -703,17 +714,24 @@ class AnalysisConsumer:
                         end_time.strftime("%H:%M:%S.%f")[:-3])
 
             if response.status_code < 300:
-                logger.info("[%s] Service success: status=%d", qname, response.status_code)
-                return True, None
+                response_data = None
+                try:
+                    resp_json = response.json()
+                    if isinstance(resp_json, dict):
+                        response_data = resp_json
+                except Exception:
+                    pass
+
+                return True, None, response_data
 
             msg = f"Service error: status={response.status_code} body={response.text[:200]}"
             logger.warning("[%s] %s", qname, msg)
-            return False, msg
+            return False, msg, None
 
         except Exception as e:
             msg = f"Service call failed: {e}"
             logger.error("[%s] %s", qname, msg)
-            return False, msg
+            return False, msg, None
 
 
     def _detect_error_from_logs(self, logs: str) -> tuple[Optional[str], Optional[str]]:
